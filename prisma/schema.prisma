@@ -1,0 +1,1505 @@
+// Logistics OS — multi-tenant schema.
+//
+// Tenancy rules:
+//  * Every operational model carries a required `companyId` and is only reachable through
+//    the tenant-scoped client (src/lib/platform/db.ts), which injects `companyId` on every
+//    read/write. Raw `prisma` is reserved for platform-level code (auth, webhooks, platform admin).
+//  * `AuditLog` is append-only — enforced by a database trigger (see migration SQL).
+//  * Money is Decimal(14,2) in the company currency. Subscription pricing is stored in kobo (Int).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────── Enums ─────────────────────────
+
+enum Role {
+  PLATFORM_SUPER_ADMIN
+  COMPANY_OWNER
+  COMPANY_ADMIN
+  OPERATIONS_MANAGER
+  BRANCH_MANAGER
+  DISPATCH_MANAGER
+  DISPATCHER
+  FLEET_MANAGER
+  DRIVER
+  RIDER
+  WAREHOUSE_STAFF
+  CUSTOMER_SERVICE
+  ACCOUNTANT
+  SALES_STAFF
+  HR_ADMIN
+  CUSTOMER
+  SENDER
+  RECIPIENT
+}
+
+enum CompanyStatus {
+  ONBOARDING
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+  SUSPENDED
+}
+
+enum BillingInterval {
+  MONTHLY
+  ANNUAL
+}
+
+enum ShipmentStatus {
+  CREATED
+  CONFIRMED
+  PICKUP_ASSIGNED
+  PICKED_UP
+  AT_HUB
+  SORTING
+  READY_FOR_DISPATCH
+  ASSIGNED_FOR_DELIVERY
+  OUT_FOR_DELIVERY
+  DELIVERED
+  DELIVERY_FAILED
+  RESCHEDULED
+  RETURNING
+  RETURNED_TO_HUB
+  RETURNED_TO_SENDER
+  CANCELLED
+}
+
+enum Priority {
+  STANDARD
+  EXPRESS
+  URGENT
+  SAME_DAY
+}
+
+enum ShipmentPaymentStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  CREDIT_ACCOUNT
+  REFUNDED
+}
+
+enum ShipmentSource {
+  DASHBOARD
+  PORTAL
+  PUBLIC
+  API
+}
+
+enum CustomerType {
+  INDIVIDUAL
+  BUSINESS
+  CORPORATE
+  MARKETPLACE_SELLER
+}
+
+enum PackageType {
+  DOCUMENT
+  PARCEL
+  FRAGILE
+  FOOD
+  PHARMACY
+  GROCERY
+  ELECTRONICS
+  FREIGHT
+  OTHER
+}
+
+enum FailureReason {
+  CUSTOMER_UNAVAILABLE
+  WRONG_ADDRESS
+  PHONE_UNREACHABLE
+  CUSTOMER_REFUSED
+  BUSINESS_CLOSED
+  VEHICLE_ISSUE
+  WEATHER
+  SECURITY_ISSUE
+  INCORRECT_PACKAGE
+  PAYMENT_ISSUE
+  OTHER
+}
+
+enum FailureResolution {
+  PENDING
+  RESCHEDULED
+  RETRY
+  RETURN_TO_HUB
+  RETURN_TO_SENDER
+}
+
+enum AttemptOutcome {
+  DELIVERED
+  FAILED
+}
+
+enum DriverKind {
+  DRIVER
+  RIDER
+}
+
+enum DriverStatus {
+  AVAILABLE
+  ON_PICKUP
+  ON_DELIVERY
+  IDLE
+  OFFLINE
+  EMERGENCY
+}
+
+enum PayModel {
+  PER_DELIVERY
+  PER_TRIP
+  PERCENTAGE
+  SALARY
+  HYBRID
+}
+
+enum VehicleType {
+  MOTORCYCLE
+  CAR
+  VAN
+  TRUCK
+  BUS
+  OTHER
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  ASSIGNED
+  ON_TRIP
+  MAINTENANCE
+  INACTIVE
+}
+
+enum MaintenanceType {
+  SERVICE
+  OIL_CHANGE
+  TYRES
+  REPAIR
+  PARTS
+  INSPECTION
+  OTHER
+}
+
+enum HubType {
+  HUB
+  WAREHOUSE
+  SORTING_CENTER
+}
+
+enum RouteStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum StopType {
+  PICKUP
+  DELIVERY
+}
+
+enum StopStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+enum CodStatus {
+  PENDING
+  COLLECTED
+  PARTIALLY_SETTLED
+  SETTLED
+  DISPUTED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CARD
+  POS
+  WALLET
+  PAYSTACK
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESSFUL
+  FAILED
+  REFUNDED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  VOID
+}
+
+enum ExpenseCategory {
+  FUEL
+  VEHICLE_MAINTENANCE
+  DRIVER_EXPENSE
+  STAFF_EXPENSE
+  OFFICE
+  HUB
+  TOLLS
+  PACKAGING
+  OTHER
+}
+
+enum SettlementStatus {
+  DRAFT
+  APPROVED
+  PAID
+  VOID
+}
+
+enum NotificationCategory {
+  SHIPMENT
+  DELIVERY
+  PICKUP
+  DISPATCH
+  DRIVER
+  FLEET
+  PAYMENT
+  COD
+  INVOICE
+  CUSTOMER
+  FINANCE
+  MAINTENANCE
+  SYSTEM
+  SECURITY
+  AI_INSIGHT
+}
+
+enum NotificationPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
+enum Channel {
+  IN_APP
+  EMAIL
+  SMS
+  WHATSAPP
+  PUSH
+}
+
+enum DeliveryState {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum DocumentOwnerType {
+  DRIVER
+  VEHICLE
+  STAFF
+  CUSTOMER
+  SHIPMENT
+  COMPANY
+}
+
+enum DocumentStatus {
+  VALID
+  EXPIRING
+  EXPIRED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_CUSTOMER
+  RESOLVED
+  CLOSED
+}
+
+enum TicketCategory {
+  SHIPMENT
+  CUSTOMER
+  DRIVER
+  PAYMENT
+  COD
+  DELIVERY
+  TECHNICAL
+  OTHER
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  ON_LEAVE
+  SUSPENDED
+  TERMINATED
+}
+
+enum AiRole {
+  USER
+  ASSISTANT
+  TOOL
+}
+
+enum InventoryMovementType {
+  RECEIVED
+  USED
+  TRANSFERRED
+  DAMAGED
+  ADJUSTMENT
+}
+
+// ───────────────────────── Platform ─────────────────────────
+
+model Company {
+  id                 String        @id @default(cuid())
+  name               String
+  slug               String        @unique
+  status             CompanyStatus @default(ONBOARDING)
+  logoUrl            String?
+  businessType       String?
+  registrationNumber String?
+  taxId              String?
+  email              String?
+  phone              String?
+  website            String?
+  addressLine        String?
+  city               String?
+  state              String?
+  country            String        @default("NG")
+  currency           String        @default("NGN")
+  timezone           String        @default("Africa/Lagos")
+  operatingRegions   String[]
+  onboardingStep     Int           @default(0)
+  onboardedAt        DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  settings     CompanySettings?
+  subscription Subscription?
+  users        User[]
+
+  @@index([status])
+}
+
+/// Operational configuration. One row per company.
+model CompanySettings {
+  id        String  @id @default(cuid())
+  companyId String  @unique
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  shipmentPrefix       String  @default("SHP")
+  invoicePrefix        String  @default("INV")
+  trackingPrefix       String  @default("LX")
+  defaultServiceHours  Int     @default(48)
+  workingHours         Json    @default("{\"start\":\"08:00\",\"end\":\"18:00\",\"days\":[1,2,3,4,5,6]}")
+  codEnabled           Boolean @default(true)
+  codFeePercent        Decimal @default(0) @db.Decimal(5, 2)
+  maxDeliveryAttempts  Int     @default(3)
+  returnPolicy         String?
+  dispatchRules        Json    @default("{\"autoAssign\":false,\"maxStopsPerRun\":15}")
+  /// Which proof methods are required by default: { signature, photo, otp, gps, recipientName }
+  proofRequirements    Json    @default("{\"signature\":false,\"photo\":true,\"otp\":false,\"gps\":true,\"recipientName\":true}")
+  /// Shipments with declaredValue >= threshold use highValueProof instead.
+  highValueThreshold   Decimal @default(100000) @db.Decimal(14, 2)
+  highValueProof       Json    @default("{\"signature\":true,\"photo\":true,\"otp\":true,\"gps\":true,\"recipientName\":true}")
+  driverRequirements   Json    @default("{\"licenseRequired\":true,\"vehicleRequired\":false}")
+  taxRatePercent       Decimal @default(7.5) @db.Decimal(5, 2)
+  taxInclusive         Boolean @default(false)
+  invoiceFooter        String?
+  /// Channels the company has configured/enabled for outbound messages.
+  enabledChannels      Channel[] @default([IN_APP])
+  notificationDefaults Json    @default("{}")
+  bankDetails          Json?
+  expiryAlertDays      Int[]   @default([30, 14, 7, 1])
+  updatedAt            DateTime @updatedAt
+}
+
+model Counter {
+  companyId String
+  key       String
+  value     Int    @default(0)
+
+  @@id([companyId, key])
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  passwordHash       String
+  name               String
+  phone              String?
+  role               Role
+  companyId          String?
+  company            Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branchId           String?
+  branch             Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  customerId         String?
+  customer           Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  isActive           Boolean   @default(true)
+  /// Per-user permission grants / revocations layered on top of the role matrix.
+  extraPermissions   String[]
+  deniedPermissions  String[]
+  failedLoginCount   Int       @default(0)
+  lockedUntil        DateTime?
+  lastLoginAt        DateTime?
+  tokenVersion       Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  staffProfile   StaffProfile?
+  driver         Driver?
+  notifications  Notification[]
+  preferences    NotificationPreference[]
+
+  @@index([companyId, role])
+  @@index([companyId, isActive])
+}
+
+model StaffProfile {
+  id               String           @id @default(cuid())
+  companyId        String
+  userId           String           @unique
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department       String?
+  jobTitle         String?
+  employmentStatus EmploymentStatus @default(ACTIVE)
+  hireDate         DateTime?
+  emergencyName    String?
+  emergencyPhone   String?
+  createdAt        DateTime         @default(now())
+
+  @@index([companyId])
+}
+
+model SubscriptionPlan {
+  id               String   @id @default(cuid())
+  key              String   @unique
+  name             String
+  description      String?
+  monthlyPriceKobo Int?
+  annualPriceKobo  Int?
+  currency         String   @default("NGN")
+  trialDays        Int      @default(14)
+  /// { shipmentsPerMonth, drivers, vehicles, users, branches } — null/-1 means unlimited
+  limits           Json
+  /// Feature keys, see src/lib/platform/entitlements.ts
+  features         String[]
+  isPublic         Boolean  @default(true)
+  isActive         Boolean  @default(true)
+  sortOrder        Int      @default(0)
+  paystackMonthlyPlanCode String?
+  paystackAnnualPlanCode  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  companyId            String             @unique
+  company              Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  planId               String
+  plan                 SubscriptionPlan   @relation(fields: [planId], references: [id])
+  status               SubscriptionStatus @default(TRIALING)
+  interval             BillingInterval    @default(MONTHLY)
+  trialEndsAt          DateTime?
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  graceEndsAt          DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  cancelledAt          DateTime?
+  pendingPlanId        String?
+  pendingInterval      BillingInterval?
+  paystackCustomerCode String?
+  paystackSubscriptionCode String?
+  /// Per-company overrides of plan limits (enterprise deals).
+  limitOverrides       Json?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  payments BillingPayment[]
+
+  @@index([status])
+  @@index([currentPeriodEnd])
+}
+
+model BillingPayment {
+  id             String        @id @default(cuid())
+  subscriptionId String
+  subscription   Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  companyId      String
+  provider       String        @default("paystack")
+  /// Our own reference, sent to the provider. Unique ⇒ idempotent crediting.
+  reference      String        @unique
+  amountKobo     Int
+  currency       String        @default("NGN")
+  status         PaymentStatus @default(PENDING)
+  planId         String
+  interval       BillingInterval
+  paidAt         DateTime?
+  rawResponse    Json?
+  createdAt      DateTime      @default(now())
+
+  @@index([companyId, createdAt])
+}
+
+/// Provider webhook ledger for idempotency.
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  provider    String
+  eventId     String
+  eventType   String
+  payload     Json
+  processedAt DateTime?
+  error       String?
+  createdAt   DateTime  @default(now())
+
+  @@unique([provider, eventId])
+}
+
+model PlatformSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+// ───────────────────────── Organisation ─────────────────────────
+
+model Branch {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  code      String
+  phone     String?
+  email     String?
+  addressLine String?
+  city      String?
+  state     String?
+  lat       Float?
+  lng       Float?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  hubs      Hub[]
+  users     User[]
+  drivers   Driver[]
+  shipments Shipment[]
+
+  @@unique([companyId, code])
+  @@index([companyId, isActive])
+}
+
+model Hub {
+  id        String   @id @default(cuid())
+  companyId String
+  branchId  String?
+  branch    Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  name      String
+  code      String
+  type      HubType  @default(HUB)
+  addressLine String?
+  city      String?
+  state     String?
+  lat       Float?
+  lng       Float?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  currentShipments Shipment[] @relation("CurrentHub")
+  originShipments  Shipment[] @relation("OriginHub")
+  events           ShipmentEvent[]
+
+  @@unique([companyId, code])
+  @@index([companyId, branchId])
+}
+
+model Zone {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  code        String
+  description String?
+  /// Cities/areas/states included — used for address → zone matching.
+  areas       String[]
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@unique([companyId, code])
+  @@index([companyId])
+}
+
+// ───────────────────────── Customers ─────────────────────────
+
+model Customer {
+  id            String       @id @default(cuid())
+  companyId     String
+  type          CustomerType @default(INDIVIDUAL)
+  name          String
+  phone         String
+  email         String?
+  businessName  String?
+  notes         String?
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  addresses   Address[]
+  shipments   Shipment[]
+  invoices    Invoice[]
+  payments    Payment[]
+  corporate   CorporateAccount?
+  users       User[]
+  tickets     SupportTicket[]
+
+  @@index([companyId, type])
+  @@index([companyId, phone])
+  @@index([companyId, name])
+  @@index([companyId, createdAt])
+}
+
+model CorporateAccount {
+  id                String   @id @default(cuid())
+  companyId         String
+  customerId        String   @unique
+  customer          Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  accountManagerId  String?
+  creditLimit       Decimal  @default(0) @db.Decimal(14, 2)
+  paymentTermsDays  Int      @default(30)
+  /// Flat percentage discount applied on top of computed price (contract pricing).
+  discountPercent   Decimal  @default(0) @db.Decimal(5, 2)
+  apiEnabled        Boolean  @default(false)
+  deliveryRules     Json?
+  contractStart     DateTime?
+  contractEnd       DateTime?
+  createdAt         DateTime @default(now())
+
+  @@index([companyId])
+}
+
+model Address {
+  id           String    @id @default(cuid())
+  companyId    String
+  customerId   String?
+  customer     Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  label        String?
+  contactName  String?
+  contactPhone String?
+  line1        String
+  line2        String?
+  city         String
+  state        String
+  country      String    @default("NG")
+  zoneId       String?
+  lat          Float?
+  lng          Float?
+  isDefault    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
+  @@index([companyId, customerId])
+}
+
+// ───────────────────────── Shipments ─────────────────────────
+
+model Shipment {
+  id             String         @id @default(cuid())
+  companyId      String
+  /// Globally unique so the public tracking page can resolve it without a tenant.
+  trackingNumber String         @unique
+  orderNumber    String
+  source         ShipmentSource @default(DASHBOARD)
+  idempotencyKey String?
+
+  customerId     String?
+  customer       Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  // Sender / pickup
+  senderName     String
+  senderPhone    String
+  senderEmail    String?
+  pickupAddress  String
+  pickupCity     String
+  pickupState    String
+  pickupLat      Float?
+  pickupLng      Float?
+  pickupZoneId   String?
+
+  // Recipient / delivery
+  recipientName  String
+  recipientPhone String
+  recipientEmail String?
+  deliveryAddress String
+  deliveryCity   String
+  deliveryState  String
+  deliveryLat    Float?
+  deliveryLng    Float?
+  deliveryZoneId String?
+
+  // Package
+  packageDescription String
+  packageType        PackageType @default(PARCEL)
+  weightKg           Decimal     @default(0) @db.Decimal(10, 2)
+  lengthCm           Decimal?    @db.Decimal(8, 2)
+  widthCm            Decimal?    @db.Decimal(8, 2)
+  heightCm           Decimal?    @db.Decimal(8, 2)
+  quantity           Int         @default(1)
+  declaredValue      Decimal     @default(0) @db.Decimal(14, 2)
+  specialInstructions String?
+  notes              String?
+
+  // Money
+  deliveryFee    Decimal               @default(0) @db.Decimal(14, 2)
+  codAmount      Decimal               @default(0) @db.Decimal(14, 2)
+  paymentStatus  ShipmentPaymentStatus @default(UNPAID)
+  /// Who pays delivery fee: SENDER or RECIPIENT
+  feePayer       String                @default("SENDER")
+  priceBreakdown Json?
+
+  // Workflow
+  status         ShipmentStatus @default(CREATED)
+  priority       Priority       @default(STANDARD)
+  branchId       String?
+  branch         Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  originHubId    String?
+  originHub      Hub?           @relation("OriginHub", fields: [originHubId], references: [id], onDelete: SetNull)
+  currentHubId   String?
+  currentHub     Hub?           @relation("CurrentHub", fields: [currentHubId], references: [id], onDelete: SetNull)
+  driverId       String?
+  driver         Driver?        @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  vehicleId      String?
+  vehicle        Vehicle?       @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  /// Dispatch board column granularity for the driver leg.
+  driverAccepted Boolean        @default(false)
+  attemptCount   Int            @default(0)
+  proofRequirements Json?
+  otpHash        String?
+  otpExpiresAt   DateTime?
+
+  pickupScheduledAt   DateTime?
+  pickedUpAt          DateTime?
+  expectedDeliveryAt  DateTime?
+  rescheduledFor      DateTime?
+  deliveredAt         DateTime?
+  cancelledAt         DateTime?
+  createdById         String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  items     ShipmentItem[]
+  events    ShipmentEvent[]
+  attempts  DeliveryAttempt[]
+  proof     ProofOfDelivery?
+  cod       CodTransaction?
+  routeStops RouteStop[]
+  invoiceLines InvoiceLine[]
+  tickets   SupportTicket[]
+
+  @@unique([companyId, orderNumber])
+  @@unique([companyId, idempotencyKey])
+  @@index([companyId, status])
+  @@index([companyId, createdAt])
+  @@index([companyId, driverId, status])
+  @@index([companyId, vehicleId])
+  @@index([companyId, customerId])
+  @@index([companyId, branchId, status])
+  @@index([companyId, currentHubId])
+  @@index([companyId, deliveryZoneId])
+  @@index([companyId, recipientPhone])
+  @@index([companyId, expectedDeliveryAt])
+}
+
+model ShipmentItem {
+  id          String   @id @default(cuid())
+  companyId   String
+  shipmentId  String
+  shipment    Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Int      @default(1)
+  weightKg    Decimal? @db.Decimal(10, 2)
+  value       Decimal? @db.Decimal(14, 2)
+
+  @@index([companyId, shipmentId])
+}
+
+/// Append-only shipment timeline.
+model ShipmentEvent {
+  id          String          @id @default(cuid())
+  companyId   String
+  shipmentId  String
+  shipment    Shipment        @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  /// Status the shipment moved to, when the event is a status change.
+  status      ShipmentStatus?
+  type        String
+  description String
+  actorId     String?
+  actorName   String?
+  hubId       String?
+  hub         Hub?            @relation(fields: [hubId], references: [id], onDelete: SetNull)
+  lat         Float?
+  lng         Float?
+  /// Visible on the public tracking page.
+  isPublic    Boolean         @default(true)
+  metadata    Json?
+  createdAt   DateTime        @default(now())
+
+  @@index([companyId, shipmentId, createdAt])
+  @@index([companyId, createdAt])
+}
+
+model DeliveryAttempt {
+  id            String            @id @default(cuid())
+  companyId     String
+  shipmentId    String
+  shipment      Shipment          @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  driverId      String?
+  driver        Driver?           @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  attemptNo     Int
+  outcome       AttemptOutcome
+  failureReason FailureReason?
+  resolution    FailureResolution?
+  notes         String?
+  rescheduledFor DateTime?
+  lat           Float?
+  lng           Float?
+  createdAt     DateTime          @default(now())
+
+  @@index([companyId, shipmentId])
+  @@index([companyId, driverId, createdAt])
+  @@index([companyId, failureReason, createdAt])
+}
+
+model ProofOfDelivery {
+  id            String   @id @default(cuid())
+  companyId     String
+  shipmentId    String   @unique
+  shipment      Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  driverId      String?
+  recipientName String?
+  signatureData String?  @db.Text
+  photoUrl      String?
+  otpVerified   Boolean  @default(false)
+  lat           Float?
+  lng           Float?
+  capturedAt    DateTime @default(now())
+  /// Client-generated key so offline-queued submissions are idempotent.
+  clientEventId String?
+
+  @@index([companyId])
+}
+
+// ───────────────────────── Fleet & drivers ─────────────────────────
+
+model Driver {
+  id             String       @id @default(cuid())
+  companyId      String
+  userId         String?      @unique
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  kind           DriverKind   @default(DRIVER)
+  name           String
+  phone          String
+  email          String?
+  branchId       String?
+  branch         Branch?      @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  licenseNumber  String?
+  licenseExpiry  DateTime?
+  status         DriverStatus @default(OFFLINE)
+  isActive       Boolean      @default(true)
+  payModel       PayModel     @default(PER_DELIVERY)
+  /// { perDelivery, perTrip, percentage, salary }
+  payRates       Json         @default("{}")
+  vehicleId      String?      @unique
+  vehicle        Vehicle?     @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  currentLat     Float?
+  currentLng     Float?
+  lastLocationAt DateTime?
+  rating         Float?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  shipments   Shipment[]
+  attempts    DeliveryAttempt[]
+  locations   DriverLocation[]
+  routes      Route[]
+  settlements Settlement[]
+  cod         CodTransaction[]
+
+  @@index([companyId, status])
+  @@index([companyId, branchId])
+  @@index([companyId, isActive])
+}
+
+model DriverLocation {
+  id         String   @id @default(cuid())
+  companyId  String
+  driverId   String
+  driver     Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  lat        Float
+  lng        Float
+  speedKmh   Float?
+  heading    Float?
+  accuracyM  Float?
+  recordedAt DateTime @default(now())
+
+  @@index([companyId, driverId, recordedAt])
+}
+
+model Vehicle {
+  id                 String        @id @default(cuid())
+  companyId          String
+  registrationNumber String
+  type               VehicleType   @default(MOTORCYCLE)
+  make               String?
+  model              String?
+  year               Int?
+  status             VehicleStatus @default(AVAILABLE)
+  capacityKg         Decimal?      @db.Decimal(10, 2)
+  mileageKm          Int           @default(0)
+  insuranceExpiry    DateTime?
+  inspectionExpiry   DateTime?
+  roadworthinessExpiry DateTime?
+  nextServiceAt      DateTime?
+  nextServiceKm      Int?
+  fuelType           String?
+  isActive           Boolean       @default(true)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  driver       Driver?
+  shipments    Shipment[]
+  maintenance  MaintenanceRecord[]
+  routes       Route[]
+  expenses     Expense[]
+
+  @@unique([companyId, registrationNumber])
+  @@index([companyId, status])
+}
+
+model MaintenanceRecord {
+  id          String          @id @default(cuid())
+  companyId   String
+  vehicleId   String
+  vehicle     Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  type        MaintenanceType
+  description String?
+  cost        Decimal         @default(0) @db.Decimal(14, 2)
+  mileageKm   Int?
+  performedAt DateTime
+  nextDueAt   DateTime?
+  nextDueKm   Int?
+  vendor      String?
+  createdAt   DateTime        @default(now())
+
+  @@index([companyId, vehicleId, performedAt])
+}
+
+// ───────────────────────── Routes / dispatch runs ─────────────────────────
+
+model Route {
+  id               String      @id @default(cuid())
+  companyId        String
+  name             String
+  status           RouteStatus @default(PLANNED)
+  driverId         String?
+  driver           Driver?     @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  vehicleId        String?
+  vehicle          Vehicle?    @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  branchId         String?
+  plannedDate      DateTime?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  estDistanceKm    Float?
+  estDurationMin   Int?
+  /// null = manual ordering. Set only when a real optimisation provider produced the order.
+  optimizedBy      String?
+  createdById      String?
+  createdAt        DateTime    @default(now())
+
+  stops RouteStop[]
+
+  @@index([companyId, status])
+  @@index([companyId, driverId, plannedDate])
+}
+
+model RouteStop {
+  id         String     @id @default(cuid())
+  companyId  String
+  routeId    String
+  route      Route      @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  shipmentId String
+  shipment   Shipment   @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  type       StopType   @default(DELIVERY)
+  sequence   Int
+  status     StopStatus @default(PENDING)
+  etaAt      DateTime?
+  completedAt DateTime?
+
+  @@unique([routeId, shipmentId, type])
+  @@index([companyId, routeId, sequence])
+  @@index([companyId, shipmentId])
+}
+
+// ───────────────────────── Pricing ─────────────────────────
+
+model PricingRule {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  isActive    Boolean  @default(true)
+  /// Lower number = evaluated first; the first matching rule wins.
+  priority    Int      @default(100)
+
+  // Match conditions (null = any)
+  originZoneId      String?
+  destinationZoneId String?
+  minWeightKg       Decimal? @db.Decimal(10, 2)
+  maxWeightKg       Decimal? @db.Decimal(10, 2)
+  minDistanceKm     Float?
+  maxDistanceKm     Float?
+  vehicleType       VehicleType?
+  shipmentPriority  Priority?
+  packageType       PackageType?
+  customerType      CustomerType?
+  corporateAccountId String?
+  interstate        Boolean?
+
+  // Price components
+  baseFee           Decimal  @default(0) @db.Decimal(14, 2)
+  perKgFee          Decimal  @default(0) @db.Decimal(14, 2)
+  /// Applied to weight above includedKg.
+  includedKg        Decimal  @default(0) @db.Decimal(10, 2)
+  perKmFee          Decimal  @default(0) @db.Decimal(14, 2)
+  insurancePercent  Decimal  @default(0) @db.Decimal(5, 2)
+  codFeePercent     Decimal  @default(0) @db.Decimal(5, 2)
+  priorityMultiplier Decimal @default(1) @db.Decimal(5, 2)
+  minimumFee        Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([companyId, isActive, priority])
+}
+
+// ───────────────────────── Finance ─────────────────────────
+
+model CodTransaction {
+  id            String    @id @default(cuid())
+  companyId     String
+  shipmentId    String    @unique
+  shipment      Shipment  @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  driverId      String?
+  driver        Driver?   @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  customerId    String?
+  amountDue     Decimal   @db.Decimal(14, 2)
+  amountCollected Decimal @default(0) @db.Decimal(14, 2)
+  /// Amount the driver has handed over to the company.
+  amountRemitted  Decimal @default(0) @db.Decimal(14, 2)
+  /// Amount paid out to the merchant/sender.
+  amountSettled   Decimal @default(0) @db.Decimal(14, 2)
+  status        CodStatus @default(PENDING)
+  collectedAt   DateTime?
+  remittedAt    DateTime?
+  settledAt     DateTime?
+  settlementReference String?
+  disputeNote   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([companyId, status])
+  @@index([companyId, driverId, status])
+  @@index([companyId, customerId, status])
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  companyId   String
+  number      String
+  customerId  String
+  customer    Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  status      InvoiceStatus @default(DRAFT)
+  issueDate   DateTime      @default(now())
+  dueDate     DateTime?
+  periodStart DateTime?
+  periodEnd   DateTime?
+  subtotal    Decimal       @default(0) @db.Decimal(14, 2)
+  taxAmount   Decimal       @default(0) @db.Decimal(14, 2)
+  total       Decimal       @default(0) @db.Decimal(14, 2)
+  amountPaid  Decimal       @default(0) @db.Decimal(14, 2)
+  notes       String?
+  createdById String?
+  createdAt   DateTime      @default(now())
+
+  lines       InvoiceLine[]
+  payments    Payment[]
+  creditNotes CreditNote[]
+
+  @@unique([companyId, number])
+  @@index([companyId, status])
+  @@index([companyId, customerId])
+  @@index([companyId, createdAt])
+}
+
+model InvoiceLine {
+  id          String    @id @default(cuid())
+  companyId   String
+  invoiceId   String
+  invoice     Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  shipmentId  String?
+  shipment    Shipment? @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  description String
+  quantity    Int       @default(1)
+  unitPrice   Decimal   @db.Decimal(14, 2)
+  amount      Decimal   @db.Decimal(14, 2)
+
+  @@index([companyId, invoiceId])
+  @@index([companyId, shipmentId])
+}
+
+model CreditNote {
+  id         String   @id @default(cuid())
+  companyId  String
+  number     String
+  invoiceId  String?
+  invoice    Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  customerId String?
+  amount     Decimal  @db.Decimal(14, 2)
+  reason     String
+  createdById String?
+  createdAt  DateTime @default(now())
+
+  @@unique([companyId, number])
+  @@index([companyId, createdAt])
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  companyId    String
+  customerId   String?
+  customer     Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  invoiceId    String?
+  invoice      Invoice?      @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  shipmentId   String?
+  amount       Decimal       @db.Decimal(14, 2)
+  method       PaymentMethod @default(CASH)
+  status       PaymentStatus @default(SUCCESSFUL)
+  reference    String?
+  note         String?
+  paidAt       DateTime      @default(now())
+  recordedById String?
+  createdAt    DateTime      @default(now())
+
+  @@index([companyId, paidAt])
+  @@index([companyId, customerId])
+  @@index([companyId, invoiceId])
+  @@index([companyId, shipmentId])
+}
+
+model Expense {
+  id          String          @id @default(cuid())
+  companyId   String
+  category    ExpenseCategory
+  amount      Decimal         @db.Decimal(14, 2)
+  description String?
+  incurredAt  DateTime        @default(now())
+  branchId    String?
+  vehicleId   String?
+  vehicle     Vehicle?        @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  driverId    String?
+  receiptUrl  String?
+  recordedById String?
+  createdAt   DateTime        @default(now())
+
+  @@index([companyId, incurredAt])
+  @@index([companyId, category])
+  @@index([companyId, branchId])
+}
+
+model Settlement {
+  id             String           @id @default(cuid())
+  companyId      String
+  number         String
+  driverId       String
+  driver         Driver           @relation(fields: [driverId], references: [id], onDelete: Restrict)
+  periodStart    DateTime
+  periodEnd      DateTime
+  payModel       PayModel
+  deliveriesCount Int             @default(0)
+  earnings       Decimal          @default(0) @db.Decimal(14, 2)
+  bonuses        Decimal          @default(0) @db.Decimal(14, 2)
+  deductions     Decimal          @default(0) @db.Decimal(14, 2)
+  codCollected   Decimal          @default(0) @db.Decimal(14, 2)
+  codRemitted    Decimal          @default(0) @db.Decimal(14, 2)
+  expensesReimbursed Decimal      @default(0) @db.Decimal(14, 2)
+  /// earnings + bonuses + expenses − deductions − (codCollected − codRemitted)
+  netPayable     Decimal          @default(0) @db.Decimal(14, 2)
+  status         SettlementStatus @default(DRAFT)
+  paidAt         DateTime?
+  reference      String?
+  notes          String?
+  createdById    String?
+  createdAt      DateTime         @default(now())
+
+  @@unique([companyId, number])
+  @@index([companyId, driverId, periodEnd])
+  @@index([companyId, status])
+}
+
+// ───────────────────────── Inventory ─────────────────────────
+
+model InventoryItem {
+  id        String   @id @default(cuid())
+  companyId String
+  hubId     String?
+  name      String
+  sku       String?
+  unit      String   @default("pcs")
+  quantity  Int      @default(0)
+  reorderLevel Int   @default(0)
+  createdAt DateTime @default(now())
+
+  movements InventoryMovement[]
+
+  @@index([companyId, hubId])
+}
+
+model InventoryMovement {
+  id        String                @id @default(cuid())
+  companyId String
+  itemId    String
+  item      InventoryItem         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  type      InventoryMovementType
+  quantity  Int
+  note      String?
+  actorId   String?
+  createdAt DateTime              @default(now())
+
+  @@index([companyId, itemId, createdAt])
+}
+
+// ───────────────────────── Notifications ─────────────────────────
+
+model Notification {
+  id          String               @id @default(cuid())
+  companyId   String
+  userId      String
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    NotificationCategory
+  priority    NotificationPriority @default(MEDIUM)
+  title       String
+  body        String
+  entityType  String?
+  entityId    String?
+  actionUrl   String?
+  /// Used to suppress duplicates of the same alert within a window.
+  dedupeKey   String?
+  isAiGenerated Boolean            @default(false)
+  readAt      DateTime?
+  dismissedAt DateTime?
+  createdAt   DateTime             @default(now())
+
+  deliveries NotificationDelivery[]
+
+  @@index([companyId, userId, readAt, createdAt])
+  @@index([userId, dedupeKey, createdAt])
+  @@index([companyId, category])
+}
+
+model NotificationDelivery {
+  id             String        @id @default(cuid())
+  notificationId String
+  notification   Notification  @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  channel        Channel
+  state          DeliveryState @default(PENDING)
+  error          String?
+  sentAt         DateTime?
+
+  @@index([notificationId])
+}
+
+model NotificationPreference {
+  id        String               @id @default(cuid())
+  companyId String
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  NotificationCategory
+  channels  Channel[]
+  muted     Boolean              @default(false)
+
+  @@unique([userId, category])
+}
+
+model MessageTemplate {
+  id        String   @id @default(cuid())
+  companyId String
+  event     String
+  channel   Channel
+  subject   String?
+  body      String
+  isActive  Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, event, channel])
+}
+
+// ───────────────────────── Documents, support, audit ─────────────────────────
+
+model Document {
+  id         String            @id @default(cuid())
+  companyId  String
+  ownerType  DocumentOwnerType
+  ownerId    String?
+  type       String
+  title      String
+  fileUrl    String?
+  fileName   String?
+  mimeType   String?
+  sizeBytes  Int?
+  issueDate  DateTime?
+  expiryDate DateTime?
+  status     DocumentStatus    @default(VALID)
+  uploadedById String?
+  createdAt  DateTime          @default(now())
+
+  @@index([companyId, ownerType, ownerId])
+  @@index([companyId, expiryDate])
+}
+
+model SupportTicket {
+  id          String         @id @default(cuid())
+  companyId   String
+  number      String
+  subject     String
+  description String
+  category    TicketCategory @default(OTHER)
+  status      TicketStatus   @default(OPEN)
+  priority    NotificationPriority @default(MEDIUM)
+  customerId  String?
+  customer    Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  shipmentId  String?
+  shipment    Shipment?      @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  assigneeId  String?
+  createdById String?
+  resolvedAt  DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  comments TicketComment[]
+
+  @@unique([companyId, number])
+  @@index([companyId, status])
+  @@index([companyId, assigneeId])
+}
+
+model TicketComment {
+  id        String        @id @default(cuid())
+  companyId String
+  ticketId  String
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId  String?
+  authorName String?
+  body      String
+  isInternal Boolean      @default(false)
+  createdAt DateTime      @default(now())
+
+  @@index([companyId, ticketId])
+}
+
+/// Append-only. UPDATE/DELETE are rejected by a database trigger.
+model AuditLog {
+  id           String   @id @default(cuid())
+  companyId    String?
+  actorId      String?
+  actorName    String?
+  actorRole    String?
+  action       String
+  resourceType String
+  resourceId   String?
+  before       Json?
+  after        Json?
+  ip           String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  @@index([companyId, createdAt])
+  @@index([companyId, resourceType, resourceId])
+  @@index([companyId, actorId])
+}
+
+// ───────────────────────── AI ─────────────────────────
+
+model AIConversation {
+  id        String      @id @default(cuid())
+  companyId String
+  userId    String
+  title     String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  messages AIMessage[]
+
+  @@index([companyId, userId, updatedAt])
+}
+
+model AIMessage {
+  id             String         @id @default(cuid())
+  companyId      String
+  conversationId String
+  conversation   AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           AiRole
+  content        String         @db.Text
+  /// Tool name / args / result summary for TOOL messages (kept for transparency + audit).
+  toolCalls      Json?
+  createdAt      DateTime       @default(now())
+
+  @@index([companyId, conversationId, createdAt])
+}
+
+// ───────────────────────── API / integrations ─────────────────────────
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  companyId   String
+  name        String
+  /// First 8 chars of the key, shown in UI. Full key is only shown once.
+  prefix      String
+  keyHash     String    @unique
+  scopes      String[]
+  customerId  String?
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  @@index([companyId])
+}
+
+model WebhookEndpoint {
+  id        String   @id @default(cuid())
+  companyId String
+  url       String
+  secret    String
+  events    String[]
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([companyId])
+}
