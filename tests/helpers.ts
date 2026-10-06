@@ -49,3 +49,22 @@ export function svcFor(t: TestTenant, role: Role = "COMPANY_OWNER", id = t.owner
 }
 
 export { prisma };
+
+import { permissionsFor, type Permission } from "@/lib/platform/permissions";
+import type { TenantContext } from "@/lib/platform/context";
+
+/** Build a TenantContext for a (fake) signed-in user with the given role, without HTTP/cookies. */
+export async function ctxFor(t: TestTenant, role: Role, opts: { extra?: string[]; denied?: string[] } = {}): Promise<TenantContext> {
+  const id = uniq();
+  const u = await prisma.user.create({ data: { email: `${role.toLowerCase()}-${id}@test.dev`, passwordHash: "x", name: `${role} ${id}`, role, companyId: t.companyId } });
+  const permissions = permissionsFor({ role, extraPermissions: opts.extra, deniedPermissions: opts.denied });
+  const { AppError } = await import("@/lib/platform/errors");
+  return {
+    user: { id: u.id, name: u.name, email: u.email, role, companyId: t.companyId, branchId: null, customerId: null, driverId: null },
+    companyId: t.companyId, db: t.svc.db, permissions,
+    can: (p: Permission) => permissions.has(p),
+    require: (...ps: Permission[]) => { for (const p of ps) if (!permissions.has(p)) throw new AppError("FORBIDDEN", "You don't have permission to do that."); },
+    requireAny: (...ps: Permission[]) => { if (!ps.some((p) => permissions.has(p))) throw new AppError("FORBIDDEN", "You don't have permission to do that."); },
+    actor: { id: u.id, name: u.name, role }, ip: null, userAgent: null,
+  };
+}
