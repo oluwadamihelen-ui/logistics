@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: 15 98 254;
+  --brand-dark: 10 62 178;
+  --brand-soft: 232 240 255;
+  --accent: 255 140 0;
+  --ink: 15 23 42;
+  --surface: 248 250 252;
+  --line: 226 232 240;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body { @apply bg-surface text-ink antialiased; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+
+@layer components {
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primary { @apply btn bg-brand text-white shadow-sm hover:bg-brand-dark; }
+  .btn-secondary { @apply btn border border-line bg-white text-ink hover:bg-slate-50; }
+  .btn-danger { @apply btn bg-red-600 text-white hover:bg-red-700; }
+  .btn-ghost { @apply btn text-slate-600 hover:bg-slate-100; }
+  .btn-sm { @apply px-2.5 py-1.5 text-xs; }
+  .input { @apply block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 disabled:bg-slate-50; }
+  .label { @apply mb-1 block text-xs font-medium text-slate-600; }
+  .card { @apply rounded-xl border border-line bg-white shadow-sm; }
+  .th { @apply whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500; }
+  .td { @apply px-4 py-3 text-sm; }
+}
+
+/* Route-line motif used in empty states and headers */
+.route-motif { background-image: radial-gradient(circle at 1px 1px, rgb(var(--line)) 1px, transparent 0); background-size: 14px 14px; }

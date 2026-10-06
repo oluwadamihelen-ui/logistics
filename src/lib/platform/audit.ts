@@ -53,3 +53,11 @@ export async function audit(input: AuditInput): Promise<void> {
     console.error("[audit] failed to write audit log", e instanceof Error ? e.message : e);
   }
 }
+
+/** Audit helper for request-scoped code: pulls actor/ip/tenant from the service context. */
+export function auditFrom(
+  svc: { companyId: string; actor: { id: string; name: string; role: string } | null; ip?: string | null; userAgent?: string | null },
+  action: string, resourceType: string, resourceId: string | null, before?: unknown, after?: unknown,
+) {
+  return audit({ companyId: svc.companyId, actor: svc.actor, action, resourceType, resourceId, before, after, ip: svc.ip, userAgent: svc.userAgent });
+}
