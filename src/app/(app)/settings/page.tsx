@@ -34,6 +34,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       {tab === "company" && <Card className="max-w-3xl"><div className="p-5">
         <Form action={updateCompanyAction} successMessage="Company profile saved">
           <LogoField current={company.logoUrl} />
+          <p className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">Public booking page: <span className="font-mono">/book/{company.slug}</span> · Public tracking: <span className="font-mono">/track</span></p>
           <FieldGrid><Field name="name" label="Company name" required defaultValue={company.name} /><Field name="businessType" label="Business type" defaultValue={company.businessType ?? ""} placeholder="Last-mile courier, 3PL…" /></FieldGrid>
           <FieldGrid><Field name="registrationNumber" label="Registration number (RC)" defaultValue={company.registrationNumber ?? ""} /><Field name="taxId" label="Tax ID" defaultValue={company.taxId ?? ""} /></FieldGrid>
           <FieldGrid><Field name="email" label="Email" type="email" defaultValue={company.email ?? ""} /><Field name="phone" label="Phone" defaultValue={company.phone ?? ""} /></FieldGrid>

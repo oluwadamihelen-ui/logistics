@@ -23,6 +23,7 @@ export interface TestTenant {
 export async function makeTenant(label = "Co", planKey = "professional"): Promise<TestTenant> {
   const id = uniq();
   const { company, owner } = await provisionCompany({ companyName: `${label} ${id}`, ownerName: `Owner ${id}`, email: `owner-${id}@test.dev`, password: "Passw0rd!long", planKey });
+  await prisma.company.update({ where: { id: company.id }, data: { status: "ACTIVE", onboardedAt: new Date() } });
   const db = createTenantClient(company.id);
   const svc: ServiceCtx = { db, companyId: company.id, actor: { id: owner.id, name: owner.name, role: "COMPANY_OWNER" } };
   const branch = await db.branch.create({ data: { name: "Main", code: "MAIN", city: "Lagos", state: "Lagos" } as any });

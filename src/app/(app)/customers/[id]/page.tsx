@@ -7,7 +7,7 @@ import { requirePageContext } from "@/lib/platform/context";
 import { prisma } from "@/lib/platform/db";
 import { getEntitlements } from "@/lib/platform/entitlements";
 import { customerStats } from "@/lib/logistics/customers";
-import { addAddressAction, setCorporateAction } from "../actions";
+import { addAddressAction, createPortalLoginAction, setCorporateAction } from "../actions";
 import { dateTime, money, titleCase, pct } from "@/lib/utils/format";
 
 export const metadata = { title: "Customer" };
@@ -29,7 +29,7 @@ export default async function CustomerDetail({ params }: { params: Promise<{ id:
   return (
     <>
       <PageHeader back={{ href: "/customers", label: "Customers" }} title={c.name} subtitle={<span className="flex items-center gap-2">{c.businessName} <Badge>{titleCase(c.type)}</Badge></span>}
-        actions={ctx.can("shipments.create") && <Link className="btn-primary" href={`/shipments/new?customer=${c.id}`}>New shipment</Link>} />
+        actions={<>{ctx.can("customers.manage") && ent.features.has("customer_portal") && <ModalForm trigger="Create portal login" triggerClassName="btn-secondary" title="Customer portal login" action={createPortalLoginAction} extra={{ customerId: c.id }}><Field name="name" label="Name" required defaultValue={c.name} /><Field name="email" label="Email" type="email" required defaultValue={c.email ?? ""} /><Field name="password" label="Temporary password" type="password" minLength={10} required /><CheckboxField name="canManageTeam" label="Can manage team members (corporate admin)" /></ModalForm>}{ctx.can("shipments.create") && <Link className="btn-primary" href={`/shipments/new?customer=${c.id}`}>New shipment</Link>}</>} />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
         <StatCard label="Total shipments" value={stats.total} /><StatCard label="Delivered" value={stats.delivered} tone="success" /><StatCard label="Failed" value={stats.failed} tone={stats.failed ? "danger" : "neutral"} />
         <StatCard label="Returned" value={stats.returned} tone="warning" /><StatCard label="Revenue" value={money(stats.revenue, cur)} tone="info" /><StatCard label="Avg shipment" value={money(stats.avgValue, cur)} />
