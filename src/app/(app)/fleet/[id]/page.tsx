@@ -31,7 +31,7 @@ export default async function VehicleDetail({ params }: { params: Promise<{ id: 
         actions={manage && <>
           <VehicleForm action={updateVehicleAction} extra={{ id }} trigger="Edit" triggerClassName="btn-secondary" title="Edit vehicle" initial={v} />
           <ModalForm trigger="Set status" triggerClassName="btn-secondary" title="Vehicle status" action={updateVehicleAction} extra={{ id }}><SelectField name="status" label="Status" defaultValue={v.status} options={["AVAILABLE", "ASSIGNED", "ON_TRIP", "MAINTENANCE", "INACTIVE"].map((s) => ({ value: s, label: titleCase(s) }))} /></ModalForm>
-          <ActionButton variant="danger" label="Delete" confirm="Delete this vehicle? Vehicles with shipment history can only be deactivated." action={deleteVehicleAction.bind(null, { id })} successMessage="Vehicle deleted" />
+          <ActionButton variant="danger" label="Delete" confirm="Delete this vehicle? Vehicles with shipment history can only be deactivated." action={deleteVehicleAction} args={{ id }} successMessage="Vehicle deleted" />
         </>} />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4"><StatCard label="Mileage" value={`${v.mileageKm.toLocaleString()} km`} /><StatCard label="Deliveries" value={trips} tone="success" /><StatCard label="Maintenance & fuel spend" value={money(Number(spend._sum.amount ?? 0), cur)} /><StatCard label="Capacity" value={v.capacityKg ? `${Number(v.capacityKg)} kg` : "—"} /></div>
       <div className="mt-4 grid gap-4 lg:grid-cols-3">

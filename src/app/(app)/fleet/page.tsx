@@ -22,7 +22,7 @@ export default async function FleetPage() {
   return (
     <>
       <PageHeader title="Fleet" subtitle="Vehicles, documents and maintenance" actions={<>
-        {ctx.can("fleet.manage") && <ActionButton label="Send expiry alerts now" action={scanExpiriesAction.bind(null, {})} successMessage="Expiry scan complete" />}
+        {ctx.can("fleet.manage") && <ActionButton label="Send expiry alerts now" action={scanExpiriesAction} args={{}} successMessage="Expiry scan complete" />}
         {ctx.can("fleet.manage") && <VehicleForm action={createVehicleAction} trigger="Add vehicle" title="New vehicle" />}
       </>} />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">

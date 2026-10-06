@@ -41,7 +41,7 @@ export function Form<T = unknown>({
   submitLabel?: string;
   className?: string;
   resetOnSuccess?: boolean;
-  redirectTo?: (data: T) => string;
+  redirectTo?: string | ((data: T) => string);
   hideSubmit?: boolean;
   /** Extra values merged into the payload (e.g. ids). */
   extra?: Record<string, unknown>;
@@ -64,7 +64,7 @@ export function Form<T = unknown>({
         if (successMessage !== "") toast.push("success", successMessage ?? "Saved");
         if (resetOnSuccess) form.reset();
         onSuccess?.(res.data);
-        if (redirectTo) router.push(redirectTo(res.data));
+        if (redirectTo) router.push(typeof redirectTo === "function" ? redirectTo(res.data) : redirectTo.replace(/\{(\w+)\}/g, (_, k) => String((res.data as any)?.[k] ?? "")));
         router.refresh();
       } else {
         setState({ errors: res.fieldErrors ?? {}, pending: false });
@@ -171,7 +171,7 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
 
 /** Button that opens a modal containing a Form; closes on success. */
 export function ModalForm<T = unknown>({ trigger, triggerClassName = "btn-primary", title, action, children, submitLabel, wide, extra, successMessage, redirectTo, onSuccess }: {
-  trigger: React.ReactNode; triggerClassName?: string; title: string; action: (input: any) => Promise<ActionResult<T>>; children: React.ReactNode; submitLabel?: string; wide?: boolean; extra?: Record<string, unknown>; successMessage?: string; redirectTo?: (d: T) => string; onSuccess?: (d: T) => void;
+  trigger: React.ReactNode; triggerClassName?: string; title: string; action: (input: any) => Promise<ActionResult<T>>; children: React.ReactNode; submitLabel?: string; wide?: boolean; extra?: Record<string, unknown>; successMessage?: string; redirectTo?: string | ((d: T) => string); onSuccess?: (d: T) => void;
 }) {
   const [open, setOpen] = React.useState(false);
   return (
@@ -187,8 +187,8 @@ export function ModalForm<T = unknown>({ trigger, triggerClassName = "btn-primar
 }
 
 /** Button that confirms, runs a server action, toasts the result and refreshes. */
-export function ActionButton<T = unknown>({ action, label, confirm, variant = "secondary", small, successMessage, onSuccess, disabled, className }: {
-  action: () => Promise<ActionResult<T>>; label: React.ReactNode; confirm?: string; variant?: "primary" | "secondary" | "danger" | "ghost"; small?: boolean; successMessage?: string; onSuccess?: (d: T) => void; disabled?: boolean; className?: string;
+export function ActionButton<T = unknown>({ action, args, label, confirm, variant = "secondary", small, successMessage, onSuccess, disabled, className }: {
+  action: (args?: any) => Promise<ActionResult<T>>; args?: unknown; label: React.ReactNode; confirm?: string; variant?: "primary" | "secondary" | "danger" | "ghost"; small?: boolean; successMessage?: string; onSuccess?: (d: T) => void; disabled?: boolean; className?: string;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -199,7 +199,7 @@ export function ActionButton<T = unknown>({ action, label, confirm, variant = "s
     setAskOpen(false);
     setPending(true);
     try {
-      const r = await action();
+      const r = await action(args);
       if (r.ok) { toast.push("success", successMessage ?? "Done"); onSuccess?.(r.data); router.refresh(); }
       else toast.push("error", r.error);
     } catch { toast.push("error", "Network error. Please try again."); }

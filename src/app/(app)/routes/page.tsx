@@ -24,9 +24,9 @@ export default async function RoutesPage() {
           <Card key={r.id}><div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3">
             <div><p className="font-semibold">{r.name}</p><p className="text-xs text-slate-500">{r.driver ? <Link href={`/drivers/${r.driver.id}`} className="text-brand">{r.driver.name}</Link> : "No driver"} · {dateOnly(r.plannedDate)} · {r.stops.length} stops{r.estDistanceKm ? ` · ~${r.estDistanceKm} km straight-line` : ""}{r.optimizedBy ? " · nearest-first heuristic" : ""}</p></div>
             <div className="flex items-center gap-2"><Badge tone={r.status === "COMPLETED" ? "success" : r.status === "IN_PROGRESS" ? "progress" : r.status === "CANCELLED" ? "neutral" : "info"}>{titleCase(r.status)}</Badge>
-              {ctx.can("routes.manage") && r.status === "PLANNED" && <ActionButton small label="Start" action={() => setRouteStatusAction({ id: r.id, status: "IN_PROGRESS" })} />}
-              {ctx.can("routes.manage") && r.status === "IN_PROGRESS" && <ActionButton small label="Complete" action={() => setRouteStatusAction({ id: r.id, status: "COMPLETED" })} />}
-              {ctx.can("routes.manage") && ["PLANNED", "IN_PROGRESS"].includes(r.status) && <ActionButton small variant="ghost" label="Cancel" confirm="Cancel this run? Shipments stay assigned." action={() => setRouteStatusAction({ id: r.id, status: "CANCELLED" })} />}</div></div>
+              {ctx.can("routes.manage") && r.status === "PLANNED" && <ActionButton small label="Start" action={setRouteStatusAction} args={{ id: r.id, status: "IN_PROGRESS" }} />}
+              {ctx.can("routes.manage") && r.status === "IN_PROGRESS" && <ActionButton small label="Complete" action={setRouteStatusAction} args={{ id: r.id, status: "COMPLETED" }} />}
+              {ctx.can("routes.manage") && ["PLANNED", "IN_PROGRESS"].includes(r.status) && <ActionButton small variant="ghost" label="Cancel" confirm="Cancel this run? Shipments stay assigned." action={setRouteStatusAction} args={{ id: r.id, status: "CANCELLED" }} />}</div></div>
             <ol className="flex flex-wrap gap-2 px-5 py-3 text-xs">{r.stops.map((s) => <li key={s.id} className="rounded-full bg-slate-100 px-2.5 py-1"><span className="font-semibold">{s.sequence}.</span> <Link className="font-mono hover:text-brand" href={`/shipments/${s.shipment.id}`}>{s.shipment.trackingNumber}</Link> · {s.shipment.deliveryCity}</li>)}</ol>
           </Card>))}</div>)}
     </>
