@@ -1423,6 +1423,20 @@ model TicketComment {
   @@index([companyId, ticketId])
 }
 
+/// Customer rating of a completed delivery (collected from the public tracking page).
+model DeliveryRating {
+  id         String   @id @default(cuid())
+  companyId  String
+  shipmentId String   @unique
+  driverId   String?
+  score      Int
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  @@index([companyId, driverId])
+  @@index([companyId, createdAt])
+}
+
 /// Append-only. UPDATE/DELETE are rejected by a database trigger.
 model AuditLog {
   id           String   @id @default(cuid())

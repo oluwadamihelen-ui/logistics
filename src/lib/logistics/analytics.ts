@@ -189,3 +189,43 @@ export async function undeliveredToday(svc: ServiceCtx, limit = 25) {
   const total = await svc.db.shipment.count({ where: { status: { in: UNDELIVERED_STATUSES } } });
   return { total, shown: rows.length, shipments: rows.map((s) => ({ tracking: s.trackingNumber, status: s.status, recipient: s.recipientName, city: s.deliveryCity, expected: s.expectedDeliveryAt, driver: s.driver?.name ?? null, overdue: !!s.expectedDeliveryAt && s.expectedDeliveryAt < new Date() })) };
 }
+
+/** GPS-derived distance per driver (sum of hops between consecutive samples < 10 minutes apart). */
+export async function driverDistanceKm(svc: ServiceCtx, r: Range) {
+  const rows = await prisma.$queryRaw<{ driverId: string; km: number }[]>`
+    SELECT "driverId", COALESCE(SUM(6371 * 2 * asin(sqrt(power(sin(radians(lat - plat) / 2), 2) + cos(radians(plat)) * cos(radians(lat)) * power(sin(radians(lng - plng) / 2), 2)))), 0)::float AS km
+    FROM (SELECT "driverId", lat, lng, "recordedAt", LAG(lat) OVER w AS plat, LAG(lng) OVER w AS plng, LAG("recordedAt") OVER w AS pat
+          FROM "DriverLocation" WHERE "companyId" = ${svc.companyId} AND "recordedAt" >= ${r.from} AND "recordedAt" <= ${r.to}
+          WINDOW w AS (PARTITION BY "driverId" ORDER BY "recordedAt")) t
+    WHERE plat IS NOT NULL AND "recordedAt" - pat < interval '10 minutes' GROUP BY "driverId"`;
+  return new Map(rows.map((x) => [x.driverId, Math.round(x.km * 10) / 10]));
+}
+
+export async function driverRatings(svc: ServiceCtx, r: Range) {
+  const rows = await svc.db.deliveryRating.groupBy({ by: ["driverId"], where: { createdAt: { gte: r.from, lte: r.to }, driverId: { not: null } }, _avg: { score: true }, _count: { _all: true } });
+  return new Map(rows.map((x) => [x.driverId!, { avg: Math.round((x._avg.score ?? 0) * 10) / 10, count: x._count._all }]));
+}
+
+export async function vehicleStats(svc: ServiceCtx, r: Range) {
+  const [vehicles, trips, fuel, maint] = await Promise.all([
+    svc.db.vehicle.findMany({ where: { isActive: true }, orderBy: { registrationNumber: "asc" } }),
+    svc.db.shipment.groupBy({ by: ["vehicleId"], where: { vehicleId: { not: null }, status: "DELIVERED", deliveredAt: { gte: r.from, lte: r.to } }, _count: { _all: true } }),
+    svc.db.expense.groupBy({ by: ["vehicleId"], where: { vehicleId: { not: null }, category: "FUEL", incurredAt: { gte: r.from, lte: r.to } }, _sum: { amount: true } }),
+    svc.db.maintenanceRecord.groupBy({ by: ["vehicleId"], where: { performedAt: { gte: r.from, lte: r.to } }, _sum: { cost: true }, _count: { _all: true } }),
+  ]);
+  return vehicles.map((v) => {
+    const t = trips.find((x) => x.vehicleId === v.id)?._count._all ?? 0, f = num(fuel.find((x) => x.vehicleId === v.id)?._sum.amount), m = maint.find((x) => x.vehicleId === v.id);
+    return { id: v.id, registration: v.registrationNumber, status: v.status, trips: t, mileageKm: v.mileageKm, fuelSpend: f, maintenanceCost: num(m?._sum.cost), maintenanceEvents: m?._count._all ?? 0, costPerDelivery: t ? Math.round(((f + num(m?._sum.cost)) / t) * 100) / 100 : null };
+  });
+}
+
+export async function customerAnalytics(svc: ServiceCtx) {
+  const id = svc.companyId;
+  const [acq, retention, top] = await Promise.all([
+    prisma.$queryRaw<{ m: string; n: bigint }[]>`SELECT to_char(date_trunc('month', "createdAt"), 'YYYY-MM') AS m, COUNT(*) AS n FROM "Customer" WHERE "companyId" = ${id} AND "createdAt" >= now() - interval '6 months' GROUP BY 1 ORDER BY 1`,
+    prisma.$queryRaw<{ prev: bigint; kept: bigint }[]>`WITH a AS (SELECT DISTINCT "customerId" FROM "Shipment" WHERE "companyId" = ${id} AND "customerId" IS NOT NULL AND "createdAt" >= now() - interval '60 days' AND "createdAt" < now() - interval '30 days'), b AS (SELECT DISTINCT "customerId" FROM "Shipment" WHERE "companyId" = ${id} AND "customerId" IS NOT NULL AND "createdAt" >= now() - interval '30 days') SELECT (SELECT COUNT(*) FROM a) AS prev, (SELECT COUNT(*) FROM a JOIN b USING ("customerId")) AS kept`,
+    prisma.$queryRaw<{ id: string; name: string; shipments: bigint; revenue: unknown }[]>`SELECT c."id", c."name", COUNT(s.*) AS shipments, COALESCE(SUM(s."deliveryFee") FILTER (WHERE s."status" = 'DELIVERED'),0) AS revenue FROM "Customer" c JOIN "Shipment" s ON s."customerId" = c."id" AND s."createdAt" >= now() - interval '30 days' WHERE c."companyId" = ${id} GROUP BY c."id", c."name" ORDER BY revenue DESC LIMIT 10`,
+  ]);
+  const prev = Number(retention[0]?.prev ?? 0), kept = Number(retention[0]?.kept ?? 0);
+  return { acquisition: acq.map((x) => ({ month: x.m, newCustomers: Number(x.n) })), retentionPct: prev >= 5 ? Math.round((kept / prev) * 1000) / 10 : null, retentionBase: prev, top: top.map((t) => ({ id: t.id, name: t.name, shipments: Number(t.shipments), revenue: num(t.revenue as any) })) };
+}

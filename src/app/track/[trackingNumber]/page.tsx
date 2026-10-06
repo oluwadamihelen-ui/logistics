@@ -8,6 +8,8 @@ import { PUBLIC_STAGES, publicStageIndex, STATUS_LABEL, STATUS_TONE } from "@/li
 import { rateLimit, clientIp } from "@/lib/platform/rate-limit";
 import { dateTime, titleCase, cn } from "@/lib/utils/format";
 import { brand } from "@/config/brand";
+import { prisma } from "@/lib/platform/db";
+import { RateDelivery } from "@/components/client/rate-delivery";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Tracking", robots: { index: false } };
@@ -17,6 +19,7 @@ export default async function TrackPage({ params }: { params: Promise<{ tracking
   // Public endpoint: throttle enumeration attempts per IP.
   const rl = rateLimit(`track:${clientIp(await headers())}`, 40, 60_000);
   const t = rl.allowed ? await getPublicTracking(tn) : null;
+  const rated = t?.status === "DELIVERED" ? !!(await prisma.$queryRaw<{ n: number }[]>`SELECT 1 AS n FROM "DeliveryRating" r JOIN "Shipment" s ON s."id" = r."shipmentId" WHERE s."trackingNumber" = ${tn} LIMIT 1`).length : false;
 
   return (
     <main className="mx-auto min-h-screen max-w-2xl px-4 py-8">
@@ -58,6 +61,7 @@ export default async function TrackPage({ params }: { params: Promise<{ tracking
                 <div><dt className="text-xs text-slate-500">Service</dt><dd className="font-medium">{titleCase(t.priority)} · {titleCase(t.packageType)}</dd></div>
                 {t.driver && <div className="col-span-2"><dt className="text-xs text-slate-500">Your {t.driver.kind === "RIDER" ? "rider" : "driver"}</dt><dd className="font-medium">{t.driver.firstName} is on the way</dd></div>}
               </dl>
+              {t.status === "DELIVERED" && <RateDelivery trackingNumber={t.trackingNumber} already={rated} />}
               {t.proof && <div className="mt-5 rounded-lg bg-emerald-50 p-4 text-sm text-emerald-900"><p className="font-semibold">Proof of delivery</p><p>Received{t.proof.recipientName ? ` by ${t.proof.recipientName}` : ""} on {dateTime(t.proof.at)}.{t.proof.hasSignature ? " Signature captured." : ""}{t.proof.hasPhoto ? " Photo captured." : ""}</p></div>}
             </div>
           </div>
