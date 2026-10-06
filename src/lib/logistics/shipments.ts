@@ -15,6 +15,7 @@ import { computeQuote, type PricingRuleLike, type QuoteRequest } from "./pricing
 import { ensureCod, recordCodCollected } from "./cod";
 import type { FailureInput, ProofInput, ShipmentInput } from "./schemas";
 import { sendCustomerMessage } from "./customer-messages";
+import { emitWebhook } from "./webhooks";
 
 export type ProofRequirements = { signature: boolean; photo: boolean; otp: boolean; gps: boolean; recipientName: boolean };
 const NO_PROOF: ProofRequirements = { signature: false, photo: false, otp: false, gps: false, recipientName: false };
@@ -72,13 +73,18 @@ export async function addEvent(
   shipmentId: string,
   e: { status?: ShipmentStatus; type: string; description: string; hubId?: string | null; lat?: number; lng?: number; isPublic?: boolean; metadata?: Prisma.InputJsonValue },
 ) {
-  return svc.db.shipmentEvent.create({
+  const ev = await svc.db.shipmentEvent.create({
     data: {
       shipmentId, status: e.status, type: e.type, description: e.description, hubId: e.hubId ?? undefined,
       actorId: svc.actor?.id, actorName: svc.actor?.name ?? "System", lat: e.lat, lng: e.lng,
       isPublic: e.isPublic ?? true, metadata: e.metadata,
     } as any,
   });
+  if (e.status && e.isPublic !== false) {
+    const sh = await svc.db.shipment.findFirst({ where: { id: shipmentId }, select: { trackingNumber: true, orderNumber: true } });
+    if (sh) void emitWebhook(svc.companyId, "shipment.status_changed", { trackingNumber: sh.trackingNumber, orderNumber: sh.orderNumber, status: e.status, description: e.description, at: ev.createdAt });
+  }
+  return ev;
 }
 
 async function getShipmentOrThrow(svc: ServiceCtx, id: string) {

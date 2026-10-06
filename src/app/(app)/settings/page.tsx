@@ -8,11 +8,14 @@ import { providerStatus } from "@/lib/platform/notifications/providers";
 import { ASSIGNABLE_ROLES, PERMISSIONS, ROLE_LABELS, ROLE_PERMISSIONS } from "@/lib/platform/permissions";
 import { DEFAULT_TEMPLATES } from "@/lib/logistics/customer-messages";
 import { changeOwnPasswordAction, createUserAction, resetPasswordAction, updateChannelsAction, updateCompanyAction, updateInvoicingAction, updateOperationsAction, updateUserAction, upsertTemplateAction } from "./actions";
+import { ApiKeyForm, WebhookForm } from "@/components/client/api-key-form";
+import { revokeApiKeyAction, deleteWebhookAction } from "./api-actions";
+import { getEntitlements } from "@/lib/platform/entitlements";
 import { ChangePassword } from "@/components/client/change-password";
 import { relativeTime, titleCase } from "@/lib/utils/format";
 
 export const metadata = { title: "Settings" };
-const TABS = [{ key: "company", label: "Company" }, { key: "operations", label: "Operations & proof" }, { key: "invoicing", label: "Invoicing & tax" }, { key: "notifications", label: "Notifications" }, { key: "team", label: "Team & roles" }, { key: "security", label: "My account" }];
+const TABS = [{ key: "company", label: "Company" }, { key: "operations", label: "Operations & proof" }, { key: "invoicing", label: "Invoicing & tax" }, { key: "notifications", label: "Notifications" }, { key: "team", label: "Team & roles" }, { key: "api", label: "API & webhooks" }, { key: "security", label: "My account" }];
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const sp = await searchParams;
@@ -70,6 +73,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       {tab === "notifications" && <NotificationsTab settings={settings} ctx={ctx} />}
 
       {tab === "team" && <TeamTab ctx={ctx} />}
+      {tab === "api" && <ApiTab ctx={ctx} />}
       {tab === "security" && <Card className="max-w-md"><CardHeader title="Change password" subtitle="You'll be signed out on all devices." /><div className="p-5"><ChangePassword action={changeOwnPasswordAction} /></div></Card>}
     </>
   );
@@ -120,5 +124,21 @@ async function TeamTab({ ctx }: { ctx: Awaited<ReturnType<typeof requirePageCont
               </ModalForm>
               <ModalForm trigger="Reset password" triggerClassName="btn-ghost btn-sm" title={`Reset password — ${u.name}`} action={resetPasswordAction} extra={{ id: u.id }}><Field name="password" label="New password" type="password" required minLength={10} /></ModalForm>
               <ActionButton small variant="ghost" label={u.isActive ? "Disable" : "Enable"} confirm={u.isActive ? `Disable ${u.name}? They will be signed out.` : `Re-enable ${u.name}?`} action={updateUserAction} args={{ id: u.id, isActive: !u.isActive }} /></>)}</TD></TR>); })}</TBody></Table></Card>
+  );
+}
+
+async function ApiTab({ ctx }: { ctx: Awaited<ReturnType<typeof requirePageContext>> }) {
+  const [ent, keys, hooks, customers] = await Promise.all([getEntitlements(ctx.companyId), ctx.db.apiKey.findMany({ orderBy: { createdAt: "desc" } }), ctx.db.webhookEndpoint.findMany({ orderBy: { createdAt: "desc" } }), ctx.db.customer.findMany({ where: { type: "CORPORATE" }, select: { id: true, name: true } })]);
+  if (!ent.features.has("api_access")) return <Alert tone="warning" title="API access is not on your plan">Upgrade to Premium to create API keys and webhooks.</Alert>;
+  const manage = ctx.can("api.manage");
+  return (
+    <div className="space-y-4">
+      <Card><CardHeader title="API keys" subtitle="Base URL: /api/v1 · Authorization: Bearer <key> · see docs/API.md" action={manage && <ApiKeyForm customers={customers} />} />
+        <Table><THead><TH>Name</TH><TH>Key</TH><TH>Scopes</TH><TH>Restricted to</TH><TH>Last used</TH><TH>{""}</TH></THead><TBody>
+          {keys.map((k) => <TR key={k.id}><TD className="font-medium">{k.name}{k.revokedAt && <Badge className="ml-2">Revoked</Badge>}</TD><TD className="font-mono text-xs">{k.prefix}…</TD><TD className="text-xs">{k.scopes.join(", ")}</TD><TD>{customers.find((c) => c.id === k.customerId)?.name ?? "Whole company"}</TD><TD className="text-xs text-slate-500">{k.lastUsedAt ? relativeTime(k.lastUsedAt) : "Never"}</TD><TD className="text-right">{manage && !k.revokedAt && <ActionButton small variant="ghost" label="Revoke" confirm="Revoke this key? Integrations using it stop working immediately." action={revokeApiKeyAction} args={{ id: k.id }} />}</TD></TR>)}
+          {!keys.length && <TR><TD colSpan={6} className="text-center text-slate-500">No API keys</TD></TR>}</TBody></Table></Card>
+      <Card><CardHeader title="Webhooks" subtitle="Signed with HMAC-SHA256: X-Webhook-Signature = v1=HMAC(secret, timestamp + '.' + body)" action={manage && <WebhookForm />} />
+        <Table><THead><TH>URL</TH><TH>Events</TH><TH>{""}</TH></THead><TBody>{hooks.map((h) => <TR key={h.id}><TD className="font-mono text-xs">{h.url}</TD><TD className="text-xs">{h.events.join(", ")}</TD><TD className="text-right">{manage && <ActionButton small variant="ghost" label="Delete" confirm="Delete this webhook?" action={deleteWebhookAction} args={{ id: h.id }} />}</TD></TR>)}{!hooks.length && <TR><TD colSpan={3} className="text-center text-slate-500">No webhooks</TD></TR>}</TBody></Table></Card>
+    </div>
   );
 }
