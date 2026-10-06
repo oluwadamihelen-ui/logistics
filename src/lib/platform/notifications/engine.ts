@@ -26,6 +26,8 @@ export interface DomainEvent {
   priority?: NotificationPriority;
   category?: NotificationCategory;
   aiGenerated?: boolean;
+  /** Override the rule's dedupe window (minutes). */
+  dedupeMinutes?: number;
 }
 
 const BRANCH_SCOPED: Role[] = ["BRANCH_MANAGER", "WAREHOUSE_STAFF"];
@@ -75,8 +77,9 @@ export async function emit(svc: Pick<ServiceCtx, "db" | "companyId">, event: Dom
   // 5. Deduplication
   const dedupeKey = event.dedupeKey ?? (event.entity ? `${event.type}:${event.entity.id}` : undefined);
   let recentSet = new Set<string>();
-  if (dedupeKey && rule.dedupeMinutes > 0) {
-    const since = new Date(Date.now() - rule.dedupeMinutes * 60_000);
+  const windowMin = event.dedupeMinutes ?? rule.dedupeMinutes;
+  if (dedupeKey && windowMin > 0) {
+    const since = new Date(Date.now() - windowMin * 60_000);
     const recent = await db.notification.findMany({
       where: { userId: { in: audience.map((u) => u.id) }, dedupeKey, createdAt: { gte: since } },
       select: { userId: true },
