@@ -1,4 +1,4 @@
-import { Badge, Card, CardHeader, PageHeader, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
+import { Badge, Card, PageHeader, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
 import { ActionButton, Field, ModalForm } from "@/components/client/form";
 import { requirePortalPage } from "@/lib/platform/portal";
 import { portalAddTeamMemberAction, portalToggleTeamMemberAction } from "../actions";

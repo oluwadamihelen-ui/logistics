@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Badge, Card, EmptyState, NotConfigured, PageHeader, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
+import { Badge, Card, EmptyState, NotConfigured, PageHeader } from "@/components/ui";
 import { ActionButton } from "@/components/client/form";
 import { requirePageContext } from "@/lib/platform/context";
 import { getEntitlements } from "@/lib/platform/entitlements";

@@ -26,7 +26,7 @@ export function NotificationList({ items }: { items: NItem[] }) {
       <ul className="divide-y divide-line">
         {items.map((n) => (
           <li key={n.id} className={cn("flex items-start gap-3 px-4 py-3", !n.readAt && "bg-brand-soft/40")}>
-            <input type="checkbox" className="mt-1" checked={sel.has(n.id)} onChange={() => setSel((p) => { const s = new Set(p); s.has(n.id) ? s.delete(n.id) : s.add(n.id); return s; })} aria-label="Select notification" />
+            <input type="checkbox" className="mt-1" checked={sel.has(n.id)} onChange={() => setSel((p) => { const s = new Set(p); if (s.has(n.id)) s.delete(n.id); else s.add(n.id); return s; })} aria-label="Select notification" />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2"><Badge tone={TONE[n.priority]}>{n.priority.toLowerCase()}</Badge><Badge>{titleCase(n.category)}</Badge>{n.ai && <Badge tone="progress">AI</Badge>}{!n.readAt && <span className="h-2 w-2 rounded-full bg-brand" aria-label="Unread" />}</div>
               <p className="mt-1 text-sm font-medium">{n.title}</p><p className="text-sm text-slate-600">{n.body}</p>

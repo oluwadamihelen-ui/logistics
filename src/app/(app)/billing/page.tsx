@@ -28,8 +28,8 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     <>
       <PageHeader title="Subscription & billing" subtitle="Plan, usage limits and payment history" />
       {sp.result === "successful" && <div className="mb-4"><Alert tone="success" title="Payment confirmed">Your subscription has been updated.</Alert></div>}
-      {sp.result === "pending" && <div className="mb-4"><Alert tone="info" title="Payment pending">We'll update your plan as soon as the provider confirms it.</Alert></div>}
-      {(sp.result === "failed" || sp.result === "error" || sp.result === "unknown") && <div className="mb-4"><Alert tone="danger" title="Payment not confirmed">We couldn't confirm that payment. If you were charged, it will be applied automatically once the provider confirms it.</Alert></div>}
+      {sp.result === "pending" && <div className="mb-4"><Alert tone="info" title="Payment pending">We&apos;ll update your plan as soon as the provider confirms it.</Alert></div>}
+      {(sp.result === "failed" || sp.result === "error" || sp.result === "unknown") && <div className="mb-4"><Alert tone="danger" title="Payment not confirmed">We couldn&apos;t confirm that payment. If you were charged, it will be applied automatically once the provider confirms it.</Alert></div>}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1"><CardHeader title="Current plan" /><div className="space-y-2 p-5 text-sm">
           <p className="text-2xl font-bold">{ent.planName ?? "None"}</p><Badge tone={tone as any}>{titleCase(ent.access.status)}</Badge>

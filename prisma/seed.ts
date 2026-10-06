@@ -19,7 +19,7 @@ const phone = () => `080${between(10000000, 99999999)}`;
 async function main() {
   await ensurePlans();
   const hash = await bcrypt.hash(PASSWORD, BCRYPT_ROUNDS);
-  const proPlan = await prisma.subscriptionPlan.findUniqueOrThrow({ where: { key: "professional" } });
+  const proPlan = await prisma.subscriptionPlan.findUniqueOrThrow({ where: { key: "premium" } });
 
   await prisma.user.upsert({ where: { email: "admin@platform.test" }, update: {}, create: { email: "admin@platform.test", passwordHash: hash, name: "Platform Admin", role: "PLATFORM_SUPER_ADMIN" } });
 
@@ -108,6 +108,8 @@ async function main() {
   const customers: Awaited<ReturnType<typeof db.customer.create>>[] = [];
   for (const [name, , type, biz] of custDefs) customers.push(await db.customer.create({ data: { name, type, phone: phone(), email: `${name.split(" ")[0].toLowerCase()}@example.test`, businessName: biz } as any }));
   for (const c of customers.filter((c) => c.type === "CORPORATE")) await db.corporateAccount.create({ data: { customerId: c.id, creditLimit: 2_000_000, paymentTermsDays: 30, discountPercent: 8, apiEnabled: true, accountManagerId: owner.id } as any });
+  const corp0 = customers.find((c) => c.type === "CORPORATE")!;
+  await prisma.user.create({ data: { email: "portal@meridian.test", name: "Meridian Courier Desk", passwordHash: hash, role: "CUSTOMER", companyId: cid, customerId: corp0.id } });
   const sellers = customers.filter((c) => c.type === "MARKETPLACE_SELLER");
 
   // Historical shipments (direct inserts with backdated timestamps)
@@ -242,7 +244,7 @@ async function main() {
 
   await emit(svc, { type: "cod.mismatch", title: "COD mismatch needs review", body: "A delivery was collected short of its COD amount.", actionUrl: "/cod" });
   await emit(svc, { type: "vehicle.document_expiring", title: "Vehicle insurance expires in 6 days", body: `${vehicles[2].registrationNumber} insurance is due.`, entity: { type: "Vehicle", id: vehicles[2].id }, actionUrl: `/fleet/${vehicles[2].id}` });
-  console.log(`Seeded SwiftDrop Logistics.\n  Owner login: owner@swiftdrop.test / ${PASSWORD}\n  Platform admin: admin@platform.test / ${PASSWORD}\n  Driver login: driver1@swiftdrop.test / ${PASSWORD}`);
+  console.log(`Seeded SwiftDrop Logistics.\n  Owner login: owner@swiftdrop.test / ${PASSWORD}\n  Platform admin: admin@platform.test / ${PASSWORD}\n  Driver login: driver1@swiftdrop.test / ${PASSWORD}\n  Customer portal login: portal@meridian.test / ${PASSWORD}\n  Public booking: /book/swiftdrop   Public tracking: /track`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); }).finally(() => prisma.$disconnect());

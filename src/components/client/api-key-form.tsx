@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { createApiKeyAction, createWebhookAction } from "@/app/(app)/settings/api-actions";
 import { CheckboxField, Field, Form, Modal, SelectField } from "./form";
 import { SecretModal } from "./secret-reveal";
-import { API_SCOPES } from "@/lib/platform/api-auth";
+import { API_SCOPES } from "@/lib/platform/api-scopes";
 
 export function ApiKeyForm({ customers }: { customers: { id: string; name: string }[] }) {
   const router = useRouter(); const [open, setOpen] = React.useState(false); const [secret, setSecret] = React.useState<string | null>(null);

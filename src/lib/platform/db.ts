@@ -34,7 +34,8 @@ const WHERE_OPS = new Set([
 
 function stripCompanyId<T>(data: T): T {
   if (data && typeof data === "object" && "companyId" in (data as object)) {
-    const { companyId: _ignored, ...rest } = data as Record<string, unknown>;
+    const rest = { ...(data as Record<string, unknown>) };
+    delete rest.companyId;
     return rest as T;
   }
   return data;

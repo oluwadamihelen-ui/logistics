@@ -7,8 +7,9 @@ import { enforceRateLimit } from "./rate-limit";
 import { getEntitlements, assertFeature } from "./entitlements";
 import type { ServiceCtx } from "./service";
 
-export const API_SCOPES = ["shipments:create", "shipments:read", "shipments:cancel", "tracking:read"] as const;
-export type ApiScope = (typeof API_SCOPES)[number];
+import { API_SCOPES, type ApiScope } from "./api-scopes";
+export { API_SCOPES };
+export type { ApiScope };
 
 export const hashKey = (k: string) => createHash("sha256").update(k).digest("hex");
 

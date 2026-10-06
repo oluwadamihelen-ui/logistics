@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { Field, FieldGrid, ModalForm, SelectField, CheckboxField } from "./form";
+import { Field, FieldGrid, ModalForm, SelectField } from "./form";
 
 export function DriverForm({ action, branches, vehicles, trigger, title, initial, extra, triggerClassName }: {
   action: (i: any) => Promise<any>; branches: { id: string; name: string }[]; vehicles: { id: string; registrationNumber: string }[]; trigger: string; title: string; extra?: Record<string, unknown>; triggerClassName?: string;

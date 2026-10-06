@@ -43,7 +43,7 @@ export function DispatchBoard({ shipments, drivers, zones, canAssign, canRun }: 
     return g;
   }, [shipments, zone]);
 
-  const toggle = (id: string) => setSel((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggle = (id: string) => setSel((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   async function assign(ids: string[], driverId: string) {
     setBusy(true);

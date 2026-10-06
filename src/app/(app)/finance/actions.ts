@@ -6,7 +6,7 @@ import { AppError } from "@/lib/platform/errors";
 import { auditFrom } from "@/lib/platform/audit";
 import { guardMutation } from "@/lib/platform/entitlements";
 import { createCreditNote, createExpense, createInvoice, recordPayment, refundPayment, setInvoiceStatus } from "@/lib/logistics/finance";
-import { recordCodSettlement, remitDriverCash, resolveCodDispute, settleCustomerCod } from "@/lib/logistics/cod";
+import { remitDriverCash, resolveCodDispute, settleCustomerCod } from "@/lib/logistics/cod";
 import { generateSettlement, updateSettlementStatus } from "@/lib/logistics/settlements";
 import { computeQuote } from "@/lib/logistics/pricing";
 import { loadPricingRules } from "@/lib/logistics/shipments";

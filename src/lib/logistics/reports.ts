@@ -101,7 +101,7 @@ export async function toPdf(r: Report, company: string, range: string): Promise<
   const width = doc.page.width - 60, colW = width / r.columns.length;
   const row = (cells: (string | number | null)[], bold = false) => {
     const y = doc.y; doc.fontSize(8).font(bold ? "Helvetica-Bold" : "Helvetica");
-    const h = Math.max(...cells.map((c, i) => doc.heightOfString(String(c ?? ""), { width: colW - 4 })), 10) + 4;
+    const h = Math.max(...cells.map((c) => doc.heightOfString(String(c ?? ""), { width: colW - 4 })), 10) + 4;
     if (y + h > doc.page.height - 40) { doc.addPage(); return row(cells, bold); }
     cells.forEach((c, i) => doc.text(String(c ?? ""), 30 + i * colW, y, { width: colW - 4 }));
     doc.y = y + h; doc.moveTo(30, doc.y - 2).lineTo(30 + width, doc.y - 2).strokeColor("#e2e8f0").stroke();

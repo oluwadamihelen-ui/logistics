@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import Image from "next/image";
-import { CheckboxField, Field, FieldGrid, Form, SelectField, TextareaField } from "@/components/client/form";
+import { CheckboxField, Field, FieldGrid, Form, TextareaField } from "@/components/client/form";
 import { LogoField } from "@/components/client/logo-field";
 import { providerStatus } from "@/lib/platform/notifications/providers";
 import { requirePageContext } from "@/lib/platform/context";

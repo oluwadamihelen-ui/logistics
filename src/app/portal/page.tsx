@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card, CardHeader, PageHeader, StatCard } from "@/components/ui";
 import { StatusBadge } from "@/components/status-badge";
 import { requirePortalPage } from "@/lib/platform/portal";
-import { prisma, num } from "@/lib/platform/db";
+import { prisma } from "@/lib/platform/db";
 import { customerStats } from "@/lib/logistics/customers";
 import { dateTime, money } from "@/lib/utils/format";
 

@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { ActionButton, Field, ModalForm, SelectField, TextareaField, Modal } from "./form";
+import { ActionButton, Field, ModalForm, SelectField, Modal } from "./form";
 import { assignAction, regenerateOtpAction, resolveFailureAction, transitionAction, unassignAction } from "@/app/(app)/shipments/actions";
 import { STATUS_LABEL } from "@/lib/logistics/shipment-status";
 import { useToast } from "./toast";

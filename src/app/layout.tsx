@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: { default: brand.APP_NAME, template: `%s · ${brand.APP_NAME}` },
   description: brand.APP_TAGLINE,
   icons: { icon: brand.APP_ICON },
+  manifest: "/manifest.webmanifest",
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0f62fe" };
 

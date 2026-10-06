@@ -40,7 +40,8 @@ export async function updateDriver(svc: ServiceCtx, id: string, input: Partial<D
   if (!before) throw new AppError("NOT_FOUND", "Driver not found");
   await assertOwned(svc.db, { branch: input.branchId, vehicle: input.vehicleId });
   if (input.vehicleId && input.vehicleId !== before.vehicleId && (await svc.db.driver.findFirst({ where: { vehicleId: input.vehicleId, id: { not: id } } }))) throw new AppError("CONFLICT", "That vehicle is already assigned to another driver");
-  const { loginEmail: _e, loginPassword: _p, payRates, ...rest } = input;
+  const { payRates, ...rest } = input;
+  delete (rest as any).loginEmail; delete (rest as any).loginPassword;
   const d = await svc.db.driver.update({ where: { id }, data: { ...rest, ...(payRates ? { payRates: payRates as Prisma.InputJsonValue } : {}) } as any });
   if (input.isActive === false) {
     const open = await svc.db.shipment.count({ where: { driverId: id, status: { in: ["PICKUP_ASSIGNED", "ASSIGNED_FOR_DELIVERY", "OUT_FOR_DELIVERY"] } } });

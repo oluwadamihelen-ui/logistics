@@ -6,7 +6,7 @@ import { requirePageContext } from "@/lib/platform/context";
 import { providerStatus } from "@/lib/platform/notifications/providers";
 import { getAttention } from "@/lib/logistics/attention";
 import { savePreferenceAction } from "./actions";
-import { cn, titleCase } from "@/lib/utils/format";
+import { titleCase } from "@/lib/utils/format";
 
 export const metadata = { title: "Notifications" };
 const CATS = ["SHIPMENT", "DELIVERY", "PICKUP", "DISPATCH", "DRIVER", "FLEET", "PAYMENT", "COD", "INVOICE", "CUSTOMER", "FINANCE", "MAINTENANCE", "SYSTEM", "SECURITY", "AI_INSIGHT"];

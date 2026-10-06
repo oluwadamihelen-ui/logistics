@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { driverReportIssueAction, driverSosAction, driverStatusAction } from "@/app/driver/actions";
 import { GpsReporter } from "./gps-reporter";
+import { NativeBridge } from "./native-bridge";
 import { useToast } from "../toast";
 import { Form, SelectField, TextareaField, Modal } from "../form";
 import { Badge } from "@/components/ui";
@@ -37,7 +38,7 @@ export function DriverHome({ status, tasks, deliveredToday }: { status: string; 
     <div className="space-y-4">
       <SyncBar />
       <div className="card flex items-center justify-between p-4">
-        <div><p className="text-xs text-slate-500">Your status</p><p className="font-semibold">{st === "EMERGENCY" ? "🚨 Emergency" : online ? "Online" : "Offline"}</p><GpsReporter enabled={online && st !== "EMERGENCY"} /></div>
+        <div><p className="text-xs text-slate-500">Your status</p><p className="font-semibold">{st === "EMERGENCY" ? "🚨 Emergency" : online ? "Online" : "Offline"}</p><GpsReporter enabled={online && st !== "EMERGENCY"} /><NativeBridge enabled={online && st !== "EMERGENCY"} /></div>
         <button className={online ? "btn-secondary" : "btn-primary"} onClick={toggle} disabled={st === "EMERGENCY"}>{online ? "Go offline" : "Go online"}</button>
       </div>
       <div className="grid grid-cols-3 gap-2 text-center">
