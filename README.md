@@ -122,13 +122,13 @@ See [`.env.example`](.env.example) — every variable with a safe placeholder. R
 
 ## Honest limitations / not implemented yet
 
-* **Push notifications**: channel exists, provider not implemented (reported "not configured"). No device-token registry.
+* **Push notifications** (FCM) are implemented server-side and in the Capacitor shell, but were **not exercised against real Firebase or on a device** here (the FCM exchange is covered by tests with a mocked HTTP layer). iOS needs an APNs key uploaded to Firebase.
 * **Route optimisation engine**: not bundled (see above).
 * **Auto-assignment**: setting is reserved, not active.
-* **Paystack auto-renewal / proration**: renewal is a manual checkout each period; plan changes charge the new plan's full price (no proration).
-* **Offline cold start**: the outbox works while the driver app is open; opening the app with no connectivity needs a service worker/native cache (not included). Only a PWA manifest ships.
-* **Proof photos/signatures** are stored (size-limited, compressed on device) in the database; documents use disk storage. No S3 driver yet.
-* **No 2FA / email invitation / password-reset-by-email** (admins set temporary passwords; users can change their own).
+* **Auto-renewal / proration** run against the Paystack API contract but were tested with a mocked provider, not live Paystack. A declined auto-charge moves the plan to past-due (7-day grace) and is **not** retried automatically. Proration credit is capped so a collectable amount (≥ ₦100) always remains; downgrades are best done by cancelling at period end.
+* **Offline cold start**: a service worker (`public/sw.js`, production builds only) caches static assets and the last-seen `/driver` pages, so the app opens offline showing the last-loaded data; offline actions queue in the outbox. Pages you have never opened online aren't available offline, and caches are wiped on sign-out.
+* **Proof photos/signatures** are stored (size-limited, compressed on device) in the database; documents use disk storage by default, or any S3-compatible bucket (`STORAGE_PROVIDER=s3`; SigV4 implemented in-repo, tested against a mocked bucket — not a live one).
+* **2FA** is optional TOTP (authenticator app + 8 one-time recovery codes) per user; it is not yet enforceable company-wide. Password reset by email needs the email provider configured. **Email invitations** are still not implemented (admins set temporary passwords).
 * Google Maps embedded map, full-text search, keyset pagination for lists (offset + indexes are used; the API uses cursors) are not implemented.
 * The Capacitor shell is provided and configured but an Android/iOS binary was **not built or tested** in this environment.
 * Demo seed driver GPS positions are fictional demo data (the UI shows real timestamps, so seeded positions appear stale).

@@ -11,6 +11,7 @@ import { permissionsFor, type Permission } from "../permissions";
 import type { ServiceCtx } from "../service";
 import { EVENT_RULES, PRIORITY_CHANNELS, type EventType } from "./rules";
 import { getProvider } from "./providers";
+import { sendPush, PushTokenInvalid } from "./push";
 
 export interface DomainEvent {
   type: EventType;
@@ -123,6 +124,7 @@ export async function emit(svc: Pick<ServiceCtx, "db" | "companyId">, event: Dom
     for (const channel of t.channels) {
       if (channel === "IN_APP") continue;
       const provider = getProvider(channel);
+      if (channel === "PUSH") { await deliverPush(db, n.id, t.u.id, provider, event); continue; }
       const to = channel === "EMAIL" ? t.u.email : t.u.phone;
       if (!provider || !provider.isConfigured() || !to) {
         await db.notificationDelivery.create({
@@ -141,6 +143,27 @@ export async function emit(svc: Pick<ServiceCtx, "db" | "companyId">, event: Dom
     }
   }
   return { created: created.length, skippedDuplicates: skipped, recipients: audience.length };
+}
+
+/** Fan a push out to every registered device of the user; dead tokens are pruned, failures are recorded. */
+async function deliverPush(db: ServiceCtx["db"], notificationId: string, userId: string, provider: ReturnType<typeof getProvider>, event: DomainEvent) {
+  const record = (state: "SENT" | "FAILED" | "SKIPPED", error?: string) =>
+    db.notificationDelivery.create({ data: { notificationId, channel: "PUSH", state, error, sentAt: state === "SENT" ? new Date() : undefined } as any }).catch(() => undefined);
+  if (!provider || !provider.isConfigured()) { await record("SKIPPED", "provider not configured"); return; }
+  const devices = await db.pushDevice.findMany({ where: { userId }, select: { id: true, token: true } });
+  if (!devices.length) { await record("SKIPPED", "no registered device"); return; }
+  let sent = 0; let lastErr: string | undefined;
+  for (const d of devices) {
+    try {
+      await sendPush(d.token, { title: event.title, body: event.body, url: event.actionUrl });
+      sent++;
+    } catch (e) {
+      if (e instanceof PushTokenInvalid) await db.pushDevice.deleteMany({ where: { id: d.id } }).catch(() => undefined);
+      else lastErr = e instanceof Error ? e.message : "send failed";
+    }
+  }
+  if (sent > 0) await record("SENT");
+  else await record("FAILED", (lastErr ?? "all device tokens were invalid").slice(0, 200));
 }
 
 /** Safe wrapper: notification problems must never fail the business operation that triggered them. */

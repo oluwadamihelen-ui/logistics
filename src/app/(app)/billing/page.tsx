@@ -6,7 +6,7 @@ import { prisma } from "@/lib/platform/db";
 import { currentUsage, getEntitlements, limitFor, LIMIT_KEYS } from "@/lib/platform/entitlements";
 import { getPaymentProvider } from "@/lib/platform/payments/provider";
 import { brand } from "@/config/brand";
-import { cancelAction } from "./actions";
+import { autoRenewAction, cancelAction, removeCardAction } from "./actions";
 import { dateOnly, money, titleCase } from "@/lib/utils/format";
 
 export const metadata = { title: "Subscription" };
@@ -37,6 +37,13 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           {sub?.currentPeriodEnd && <p className="text-slate-600">{sub.cancelAtPeriodEnd ? "Access until" : "Renews / expires"} {dateOnly(sub.currentPeriodEnd)} · {titleCase(sub.interval)}</p>}
           {ent.access.level === "GRACE" && <p className="text-amber-700">Payment overdue — grace period until {dateOnly(sub?.graceEndsAt)}.</p>}
           {ent.access.level === "READ_ONLY" && <p className="text-red-700">{ent.access.reason}. Your workspace is read-only until you subscribe.</p>}
+          {sub?.paystackAuthCode ? (
+            <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+              <p>Card on file: <b>{sub.cardBrand ?? "card"} •••• {sub.cardLast4 ?? "----"}</b></p>
+              <p className="mt-1">Auto-renewal is <b>{sub.autoRenew ? "on" : "off"}</b>{sub.autoRenew && sub.currentPeriodEnd ? ` — charged ~24h before ${dateOnly(sub.currentPeriodEnd)}` : ""}.</p>
+              <div className="mt-2 flex gap-2"><ActionButton variant="ghost" label={sub.autoRenew ? "Turn off auto-renew" : "Turn on auto-renew"} action={autoRenewAction} args={{ on: !sub.autoRenew }} /><ActionButton variant="ghost" label="Remove card" confirm="Remove the saved card and turn off auto-renewal?" action={removeCardAction} args={{}} /></div>
+            </div>
+          ) : <p className="text-xs text-slate-500">No card saved. Pay by card with &ldquo;renew automatically&rdquo; ticked to enable auto-renewal.</p>}
           {sub?.cancelAtPeriodEnd ? <ActionButton label="Resume subscription" action={cancelAction} args={{ resume: true }} /> : sub && ["ACTIVE", "PAST_DUE"].includes(sub.status) && <ActionButton variant="ghost" label="Cancel at period end" confirm="Cancel your subscription? You keep access until the current period ends." action={cancelAction} args={{}} />}
         </div></Card>
         <Card className="lg:col-span-2"><CardHeader title="Usage" /><div className="grid gap-4 p-5 sm:grid-cols-2">

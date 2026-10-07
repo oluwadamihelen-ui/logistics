@@ -6,7 +6,11 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 export interface InitializeInput { email: string; amountKobo: number; currency: string; reference: string; callbackUrl: string; metadata?: Record<string, unknown> }
-export interface VerifyResult { status: "success" | "failed" | "pending" | "abandoned"; amountKobo: number; currency: string; reference: string; paidAt: Date | null; raw: unknown }
+export interface VerifyResult { status: "success" | "failed" | "pending" | "abandoned"; amountKobo: number; currency: string; reference: string; paidAt: Date | null; raw: unknown;
+  /** Reusable card authorization (token, never the card number) when the customer's card can be charged again. */
+  authorization?: { code: string; reusable: boolean; last4: string | null; brand: string | null; email: string | null };
+  metadata?: Record<string, unknown> }
+export interface ChargeInput { email: string; amountKobo: number; currency: string; reference: string; authorizationCode: string; metadata?: Record<string, unknown> }
 
 export interface PaymentProvider {
   name: string;
@@ -14,6 +18,8 @@ export interface PaymentProvider {
   publicKey(): string | null;
   initialize(i: InitializeInput): Promise<{ authorizationUrl: string; reference: string }>;
   verify(reference: string): Promise<VerifyResult>;
+  /** Charge a saved authorization (auto-renewal). Outcome must still be confirmed with verify(). */
+  chargeAuthorization?(i: ChargeInput): Promise<{ status: "success" | "failed" | "pending" }>;
   verifyWebhookSignature(rawBody: string, signature: string | null): boolean;
 }
 
@@ -38,7 +44,20 @@ export const paystack: PaymentProvider = {
     const j = (await res.json().catch(() => ({}))) as any;
     if (!res.ok || !j.status) throw new Error(`Paystack verify failed (${res.status})`);
     const d = j.data;
-    return { status: d.status === "success" ? "success" : d.status === "failed" ? "failed" : d.status === "abandoned" ? "abandoned" : "pending", amountKobo: Number(d.amount), currency: String(d.currency), reference: String(d.reference), paidAt: d.paid_at ? new Date(d.paid_at) : null, raw: { id: d.id, status: d.status, gateway_response: d.gateway_response, channel: d.channel } };
+    return { status: d.status === "success" ? "success" : d.status === "failed" ? "failed" : d.status === "abandoned" ? "abandoned" : "pending", amountKobo: Number(d.amount), currency: String(d.currency), reference: String(d.reference), paidAt: d.paid_at ? new Date(d.paid_at) : null, raw: { id: d.id, status: d.status, gateway_response: d.gateway_response, channel: d.channel },
+      authorization: d.authorization?.authorization_code ? { code: String(d.authorization.authorization_code), reusable: d.authorization.reusable === true, last4: d.authorization.last4 ?? null, brand: d.authorization.brand ?? null, email: d.customer?.email ?? null } : undefined,
+      metadata: d.metadata && typeof d.metadata === "object" ? d.metadata : undefined };
+  },
+  async chargeAuthorization(i) {
+    const res = await fetch(`${BASE}/transaction/charge_authorization`, {
+      method: "POST", headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: i.email, amount: i.amountKobo, currency: i.currency, reference: i.reference, authorization_code: i.authorizationCode, metadata: i.metadata }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    const j = (await res.json().catch(() => ({}))) as any;
+    if (!res.ok && res.status >= 500) throw new Error(`Paystack charge failed (${res.status})`);
+    const st = j?.data?.status;
+    return { status: st === "success" ? "success" : st === "failed" ? "failed" : "pending" };
   },
   verifyWebhookSignature(rawBody, signature) {
     const secret = process.env.PAYSTACK_WEBHOOK_SECRET || process.env.PAYSTACK_SECRET_KEY;

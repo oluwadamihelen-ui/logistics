@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { Icon } from "./icon";
+import { PushRegistrar, unregisterPush } from "./push-registrar";
 import { cn } from "@/lib/utils/format";
 
 export interface ShellNavGroup { label: string; items: { href: string; label: string; icon: string; locked?: boolean }[] }
@@ -67,7 +68,7 @@ export function AppShell({ brandName, logo, companyName, userName, roleLabel, na
             {unread > 0 && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-accent" />}
           </Link>
           <div className="hidden px-2 text-right sm:block"><p className="text-sm font-medium leading-tight">{userName}</p><p className="text-xs text-slate-500">{roleLabel}</p></div>
-          <button className="btn-ghost" onClick={() => signOut({ callbackUrl: "/login" })} aria-label="Sign out"><Icon name="logout" className="h-4 w-4" /></button>
+          <button className="btn-ghost" onClick={async () => { await unregisterPush(); await signOut({ callbackUrl: "/login" }); }} aria-label="Sign out"><Icon name="logout" className="h-4 w-4" /></button>
         </div>
       </header>
       {banner && (
@@ -75,6 +76,7 @@ export function AppShell({ brandName, logo, companyName, userName, roleLabel, na
           {banner.text} {banner.href && <Link href={banner.href} className="font-semibold underline">Manage subscription</Link>}
         </div>
       )}
+      <PushRegistrar />
       <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">{children}</main>
     </div>
   );

@@ -4,6 +4,7 @@
  * instead of pretending it was sent.
  */
 import type { Channel } from "@prisma/client";
+import { pushConfigured, sendPush } from "./push";
 
 export interface OutboundMessage {
   to: string; // email address or E.164 phone
@@ -67,16 +68,13 @@ export const whatsappProvider: ChannelProvider = {
   },
 };
 
-/**
- * Web/mobile push needs a device-token registry and FCM/APNs credentials. Not implemented in this
- * build: reported as unconfigured so no one is told a push was sent.
- */
+/** Push via FCM HTTP v1. `to` is a device token; the engine fans out to every registered device and prunes dead tokens. */
 export const pushProvider: ChannelProvider = {
   channel: "PUSH",
   name: "fcm",
-  isConfigured: () => false,
-  async send() {
-    throw new Error("Push provider not implemented");
+  isConfigured: () => pushConfigured(),
+  async send(m) {
+    await sendPush(m.to, { title: m.subject ?? "Notification", body: m.body });
   },
 };
 

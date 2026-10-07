@@ -1,11 +1,12 @@
 /**
  * File storage abstraction. Default driver = local disk (STORAGE_DIR, default ./uploads) which needs a
- * persistent volume in production. A cloud driver (S3/R2) can implement the same interface.
+ * persistent volume in production. STORAGE_PROVIDER=s3 selects the S3-compatible driver (storage-s3.ts).
  * Files are never served from a public path — only through authenticated, tenant-checked routes.
  */
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { s3Storage } from "./storage-s3";
 
 export interface StorageDriver { name: string; isConfigured(): boolean; put(companyId: string, data: Buffer): Promise<string>; get(key: string): Promise<Buffer>; remove(key: string): Promise<void> }
 
@@ -28,7 +29,9 @@ export const diskStorage: StorageDriver = {
 
 export function getStorage(): StorageDriver | null {
   const p = process.env.STORAGE_PROVIDER ?? "disk";
-  return p === "disk" ? diskStorage : null; // "s3" etc. not implemented in this build
+  if (p === "disk") return diskStorage;
+  if (p === "s3") return s3Storage.isConfigured() ? s3Storage : null;
+  return null;
 }
 
 export const MAX_UPLOAD = 5 * 1024 * 1024;

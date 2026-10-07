@@ -10,7 +10,7 @@ Login · today's tasks (pickups/deliveries, priority sorted) · accept task · c
 
 `src/lib/driver/offline-queue.ts`: every status change / proof / failure is written to an IndexedDB outbox **first**, then sent. If the network is down it stays queued and the UI shows "Pending sync"; it flushes on reconnect and every 30 s, in order. Each item has a client-generated `clientEventId` that the server treats as an idempotency key, so a retry after an ambiguous failure can never double-apply (proof of delivery, attempt count, COD, timeline all protected — see `tests/shipments.test.ts` "idempotent on replay"). Updates that the server rejects permanently (e.g. validation) are shown to the driver instead of being dropped silently.
 
-Limitation: the outbox works while the app is loaded. Cold-starting the app with **no** connectivity needs an offline app shell (service worker / bundled assets), which is not included yet.
+Offline cold start: `public/sw.js` (registered by the driver layout in production builds) caches `/_next/static` assets and the last successfully loaded `/driver` pages (network-first), so the app opens without connectivity and shows the last-loaded tasks; the outbox keeps queueing actions. Caches are cleared on sign-out. Pages never opened while online show an offline notice.
 
 ## Build the native app
 
@@ -34,7 +34,7 @@ Android permissions to add in `AndroidManifest.xml`: `ACCESS_FINE_LOCATION`, `AC
 
 ## Push notifications
 
-`@capacitor/push-notifications` is declared, but server-side push delivery (FCM/APNs, token registry) is **not implemented**; the PUSH channel reports "not configured". In-app alerts and the driver "Alerts" tab work today.
+Server: set `FCM_SERVICE_ACCOUNT_JSON` (Firebase service-account key as JSON or base64). The PUSH channel then sends to every device registered by the user via FCM HTTP v1 and removes tokens FCM reports as unregistered. Client: inside the Capacitor shell `PushRegistrar` asks permission, registers with `@capacitor/push-notifications`, and posts the token to `POST /api/push/register` (bound to the signed-in user; deleted on sign-out). Tapping a notification opens its `actionUrl`. Add `google-services.json` (Android) / the APNs key in Firebase (iOS) when building the shell. Without credentials, deliveries are recorded as `SKIPPED`.
 
 ## Release checklist
 

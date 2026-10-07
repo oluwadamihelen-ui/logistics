@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { checkoutAction } from "@/app/(app)/billing/actions";
+import { checkoutAction, quoteAction } from "@/app/(app)/billing/actions";
 import { useToast } from "./toast";
 import { money } from "@/lib/utils/format";
 
@@ -12,9 +12,12 @@ export function PlanPicker({ plans, paymentsReady, contactEmail }: { plans: Plan
   const toast = useToast();
   const [interval, setInterval] = React.useState<"MONTHLY" | "ANNUAL">("MONTHLY");
   const [busy, setBusy] = React.useState<string | null>(null);
+  const [autoRenew, setAutoRenew] = React.useState(true);
   async function go(key: string) {
     setBusy(key);
-    const r = await checkoutAction({ planKey: key, interval });
+    const q = await quoteAction({ planKey: key, interval });
+    if (q.ok && q.data.creditKobo > 0 && !window.confirm(`Switching plans now: ${money(q.data.priceKobo / 100)} less ${money(q.data.creditKobo / 100)} credit for the unused part of your current period = ${money(q.data.dueKobo / 100)} due today. A new billing period starts today.`)) { setBusy(null); return; }
+    const r = await checkoutAction({ planKey: key, interval, autoRenew });
     setBusy(null);
     if (r.ok) window.location.href = r.data.url; else toast.push("error", r.error);
   }
@@ -23,6 +26,7 @@ export function PlanPicker({ plans, paymentsReady, contactEmail }: { plans: Plan
       <div className="mb-4 inline-flex rounded-lg bg-slate-100 p-1 text-sm" role="group" aria-label="Billing interval">
         {(["MONTHLY", "ANNUAL"] as const).map((i) => <button key={i} onClick={() => setInterval(i)} className={`rounded-md px-4 py-1.5 font-medium ${interval === i ? "bg-white shadow-sm" : "text-slate-500"}`}>{i === "MONTHLY" ? "Monthly" : "Annual (2 months free)"}</button>)}
       </div>
+      <label className="mb-4 ml-4 inline-flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" checked={autoRenew} onChange={(e) => setAutoRenew(e.target.checked)} /> Save my card and renew automatically (cancel any time)</label>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {plans.map((p) => {
           const price = interval === "ANNUAL" ? p.annual : p.monthly;
