@@ -86,7 +86,7 @@ export default async function Landing() {
                 {[["Delivered today", "128"], ["Out for delivery", "46"], ["COD to remit", "₦412,500"]].map(([l, v]) => <div key={l} className="rounded-xl bg-white p-3 text-ink"><p className="text-[11px] text-slate-500">{l}</p><p className="mt-1 text-xl font-bold">{v}</p></div>)}
               </div>
               <div className="mt-3 space-y-2">
-                {[["SDK7M2P9XQ4", "Ikeja → Lekki", "Out for delivery", "bg-amber-100 text-amber-800"], ["SDK3H8T1ZW6", "Yaba → Victoria Island", "Delivered", "bg-emerald-100 text-emerald-800"], ["SDK9C4N2LR8", "Surulere → Ikoyi", "Ready for dispatch", "bg-blue-100 text-blue-800"]].map(([t, r, s, c]) => (
+                {[["SDK7M2P9XQ4", "Lagos → Benin", "Out for delivery", "bg-amber-100 text-amber-800"], ["SDK3H8T1ZW6", "Abuja → Port Harcourt", "Delivered", "bg-emerald-100 text-emerald-800"], ["SDK9C4N2LR8", "Sapele → Lagos", "Ready for dispatch", "bg-blue-100 text-blue-800"]].map(([t, r, s, c]) => (
                   <div key={t} className="flex items-center justify-between rounded-xl bg-white px-4 py-3 text-ink"><div><p className="font-mono text-xs font-semibold">{t}</p><p className="text-xs text-slate-500">{r}</p></div><span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${c}`}>{s}</span></div>
                 ))}
               </div>
