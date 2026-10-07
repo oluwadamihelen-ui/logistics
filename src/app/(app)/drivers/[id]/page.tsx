@@ -9,7 +9,7 @@ import { prisma } from "@/lib/platform/db";
 import { driverStats } from "@/lib/logistics/drivers";
 import { clearSosAction, setDriverActiveAction, updateDriverAction } from "../actions";
 import { dateTime, money, pct, relativeTime, titleCase } from "@/lib/utils/format";
-import { driverTone } from "../page";
+import { driverTone } from "@/lib/logistics/driver-tone";
 
 export const metadata = { title: "Driver" };
 

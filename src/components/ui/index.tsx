@@ -27,7 +27,7 @@ export function Card({ children, className, ...rest }: React.HTMLAttributes<HTML
 
 export function CardHeader({ title, subtitle, action }: { title: React.ReactNode; subtitle?: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
+    <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-3.5">
       <div>
         <h3 className="text-sm font-semibold text-ink">{title}</h3>
         {subtitle && <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>}
@@ -39,11 +39,11 @@ export function CardHeader({ title, subtitle, action }: { title: React.ReactNode
 
 export function PageHeader({ title, subtitle, actions, back }: { title: React.ReactNode; subtitle?: React.ReactNode; actions?: React.ReactNode; back?: { href: string; label: string } }) {
   return (
-    <div className="mb-6">
+    <div className="mb-6 border-b border-line pb-5">
       {back && <Link href={back.href} className="mb-2 inline-block text-xs font-medium text-slate-500 hover:text-brand">← {back.label}</Link>}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">{title}</h1>
+          <h1 className="text-[26px] font-semibold leading-8 tracking-tight text-ink">{title}</h1>
           {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -53,19 +53,18 @@ export function PageHeader({ title, subtitle, actions, back }: { title: React.Re
 }
 
 export function StatCard({ label, value, hint, tone = "neutral", href, icon }: { label: string; value: React.ReactNode; hint?: React.ReactNode; tone?: Tone; href?: string; icon?: React.ReactNode }) {
-  const accent: Record<Tone, string> = { neutral: "bg-slate-300", info: "bg-blue-500", progress: "bg-indigo-500", success: "bg-emerald-500", warning: "bg-amber-500", danger: "bg-red-500" };
+  const dot: Record<Tone, string> = { neutral: "bg-slate-300", info: "bg-blue-500", progress: "bg-indigo-500", success: "bg-emerald-500", warning: "bg-amber-500", danger: "bg-red-500" };
   const body = (
-    <div className="relative overflow-hidden rounded-xl border border-line bg-white p-4 shadow-sm transition hover:shadow-md">
-      <span className={cn("absolute inset-y-0 left-0 w-1", accent[tone])} />
-      <div className="flex items-start justify-between">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+    <div className="h-full rounded-xl border border-line bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md">
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-[13px] font-medium text-slate-500"><span className={cn("h-2 w-2 flex-none rounded-full", dot[tone])} />{label}</p>
         {icon && <span className="text-slate-400">{icon}</span>}
       </div>
-      <p className="mt-2 text-2xl font-semibold tabular-nums text-ink">{value}</p>
+      <p className="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-ink">{value}</p>
       {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
     </div>
   );
-  return href ? <Link href={href} className="block">{body}</Link> : body;
+  return href ? <Link href={href} className="block h-full">{body}</Link> : body;
 }
 
 export function EmptyState({ title, description, action, icon }: { title: string; description?: string; action?: React.ReactNode; icon?: React.ReactNode }) {
@@ -93,7 +92,7 @@ export function NotConfigured({ title, description, steps }: { title: string; de
 export function Table({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div className={cn("overflow-x-auto", className)}>
-      <table className="min-w-full divide-y divide-line">{children}</table>
+      <table className="min-w-full divide-y divide-line text-slate-700">{children}</table>
     </div>
   );
 }

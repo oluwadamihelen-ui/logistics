@@ -4,10 +4,9 @@ import { DriverForm } from "@/components/client/driver-form";
 import { requirePageContext } from "@/lib/platform/context";
 import { createDriverAction } from "./actions";
 import { relativeTime, titleCase, dateOnly } from "@/lib/utils/format";
-import type { Tone } from "@/lib/logistics/shipment-status";
 
 export const metadata = { title: "Drivers & riders" };
-export const driverTone: Record<string, Tone> = { AVAILABLE: "success", ON_PICKUP: "progress", ON_DELIVERY: "progress", IDLE: "warning", OFFLINE: "neutral", EMERGENCY: "danger" };
+import { driverTone } from "@/lib/logistics/driver-tone";
 
 export default async function DriversPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
   const sp = await searchParams;

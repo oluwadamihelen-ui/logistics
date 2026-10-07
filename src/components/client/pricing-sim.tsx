@@ -16,7 +16,7 @@ export function PricingSimulator({ zones, currency }: { zones: { id: string; nam
   return (
     <form onSubmit={run} className="space-y-3">
       <FieldGrid><SelectField name="originZoneId" label="Pickup zone" placeholder="Any" options={zones.map((z) => ({ value: z.id, label: z.name }))} /><SelectField name="destinationZoneId" label="Delivery zone" placeholder="Any" options={zones.map((z) => ({ value: z.id, label: z.name }))} /></FieldGrid>
-      <FieldGrid cols={3}><Field name="weightKg" label="Weight kg" type="number" step="0.1" defaultValue="2" /><SelectField name="priority" label="Priority" defaultValue="STANDARD" options={["STANDARD", "EXPRESS", "URGENT", "SAME_DAY"].map((p) => ({ value: p, label: p }))} /><SelectField name="interstate" label="Interstate" placeholder="No" options={[{ value: "yes", label: "Yes" }]} /></FieldGrid>
+      <FieldGrid><Field name="weightKg" label="Weight kg" type="number" step="0.1" defaultValue="2" /><SelectField name="priority" label="Priority" defaultValue="STANDARD" options={["STANDARD", "EXPRESS", "URGENT", "SAME_DAY"].map((p) => ({ value: p, label: p[0] + p.slice(1).toLowerCase().replace("_", " ") }))} /><SelectField name="interstate" label="Interstate" placeholder="No" options={[{ value: "yes", label: "Yes" }]} /></FieldGrid>
       <FieldGrid><Field name="declaredValue" label="Declared value" type="number" /><Field name="codAmount" label="COD amount" type="number" /></FieldGrid>
       <button className="btn-secondary">Calculate</button>
       {err && <p className="text-sm text-red-600">{err}</p>}

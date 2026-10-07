@@ -51,6 +51,7 @@ export function Form<T = unknown>({
   const toast = useToast();
   const [state, setState] = React.useState<FormState>({ errors: {}, pending: false });
   const [error, setError] = React.useState<string | null>(null);
+  const [redirecting, setRedirecting] = React.useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -60,11 +61,20 @@ export function Form<T = unknown>({
     try {
       const res = await action({ ...readForm(form), ...(extra ?? {}) });
       if (res.ok) {
-        setState({ errors: {}, pending: false });
         if (successMessage !== "") toast.push("success", successMessage ?? "Saved");
         if (resetOnSuccess) form.reset();
         onSuccess?.(res.data);
-        if (redirectTo) router.push(typeof redirectTo === "function" ? redirectTo(res.data) : redirectTo.replace(/\{(\w+)\}/g, (_, k) => String((res.data as any)?.[k] ?? "")));
+        if (redirectTo) {
+          // Stay in the "saving" state until the next page is up so the form can't be submitted twice;
+          // if client-side navigation stalls, fall back to a full page load.
+          const target = typeof redirectTo === "function" ? redirectTo(res.data) : redirectTo.replace(/\{(\w+)\}/g, (_, k) => String((res.data as any)?.[k] ?? ""));
+          setState({ errors: {}, pending: true });
+          setRedirecting(true);
+          router.push(target);
+          window.setTimeout(() => { if (window.location.pathname !== target.split("?")[0]) window.location.assign(target); }, 2500);
+          return;
+        }
+        setState({ errors: {}, pending: false });
         router.refresh();
       } else {
         setState({ errors: res.fieldErrors ?? {}, pending: false });
@@ -84,7 +94,7 @@ export function Form<T = unknown>({
         {!hideSubmit && (
           <div className="flex items-center justify-end gap-2 pt-1">
             {cancel}
-            <button type="submit" className="btn-primary" disabled={state.pending}>{state.pending ? "Saving…" : submitLabel}</button>
+            <button type="submit" className="btn-primary" disabled={state.pending}>{redirecting ? "Opening…" : state.pending ? "Saving…" : submitLabel}</button>
           </div>
         )}
       </form>
