@@ -137,11 +137,11 @@ export function Skeleton({ className }: { className?: string }) {
 
 export function DescriptionList({ items }: { items: { label: string; value: React.ReactNode }[] }) {
   return (
-    <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+    <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
       {items.map((i) => (
-        <div key={i.label}>
+        <div key={i.label} className="min-w-0">
           <dt className="text-xs font-medium text-slate-500">{i.label}</dt>
-          <dd className="mt-0.5 text-sm text-ink">{i.value || "—"}</dd>
+          <dd className="mt-0.5 break-words text-sm text-ink [overflow-wrap:anywhere]">{i.value || "—"}</dd>
         </div>
       ))}
     </dl>
