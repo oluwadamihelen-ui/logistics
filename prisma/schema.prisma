@@ -684,6 +684,18 @@ model Hub {
   @@index([companyId, branchId])
 }
 
+/// A city / area added by the company to the built-in state → city lists.
+model CityOption {
+  id        String   @id @default(cuid())
+  companyId String
+  state     String
+  name      String
+  createdAt DateTime @default(now())
+
+  @@unique([companyId, state, name])
+  @@index([companyId, state])
+}
+
 model Zone {
   id          String   @id @default(cuid())
   companyId   String

@@ -3,12 +3,13 @@ import * as React from "react";
 import { Field, FieldGrid, SelectField, TextareaField, Form } from "./form";
 import { money } from "@/lib/utils/format";
 import { useToast } from "./toast";
+import { StateCitySelect } from "./state-city-select";
 
 interface Quote { matched: boolean; total: number; ruleName: string | null; lines: { label: string; amount: number }[] }
 type ActionFn = (i: any) => Promise<any>;
 
 /** Shared by the customer portal and the public booking page. Server actions decide who may call them. */
-export function BookingForm({ quoteAction, bookAction, currency, honeypot, mode, extra }: { quoteAction: ActionFn; bookAction: ActionFn; currency: string; honeypot?: boolean; mode: "portal" | "public"; extra?: Record<string, unknown> }) {
+export function BookingForm({ quoteAction, bookAction, currency, honeypot, mode, extra, customCities = {}, freeTextLocations = false }: { quoteAction: ActionFn; bookAction: ActionFn; currency: string; honeypot?: boolean; mode: "portal" | "public"; extra?: Record<string, unknown>; customCities?: Record<string, string[]>; freeTextLocations?: boolean }) {
   const toast = useToast();
   const ref = React.useRef<HTMLDivElement>(null);
   const [quote, setQuote] = React.useState<Quote | null>(null);
@@ -26,8 +27,8 @@ export function BookingForm({ quoteAction, bookAction, currency, honeypot, mode,
       <Form action={bookAction} extra={extra} submitLabel="Book pickup" onSuccess={setResult} redirectTo={mode === "portal" ? "/portal/shipments/{id}" : undefined} successMessage={mode === "portal" ? "Pickup booked" : ""}>
         {honeypot && <div className="hidden" aria-hidden="true"><label>Website<input name="website" tabIndex={-1} autoComplete="off" /></label></div>}
         <div className="grid gap-4 lg:grid-cols-2">
-          <section className="card space-y-4 p-5"><h3 className="text-sm font-semibold">Sender & pickup</h3><Field name="senderName" label="Name" required /><FieldGrid><Field name="senderPhone" label="Phone" type="tel" required /><Field name="senderEmail" label="Email" type="email" /></FieldGrid><Field name="pickupAddress" label="Pickup address" required /><FieldGrid><Field name="pickupCity" label="City / area" required /><Field name="pickupState" label="State" required defaultValue="Lagos" /></FieldGrid></section>
-          <section className="card space-y-4 p-5"><h3 className="text-sm font-semibold">Recipient</h3><Field name="recipientName" label="Name" required /><FieldGrid><Field name="recipientPhone" label="Phone" type="tel" required /><Field name="recipientEmail" label="Email" type="email" /></FieldGrid><Field name="deliveryAddress" label="Delivery address" required /><FieldGrid><Field name="deliveryCity" label="City / area" required /><Field name="deliveryState" label="State" required defaultValue="Lagos" /></FieldGrid></section>
+          <section className="card space-y-4 p-5"><h3 className="text-sm font-semibold">Sender & pickup</h3><Field name="senderName" label="Name" required /><FieldGrid><Field name="senderPhone" label="Phone" type="tel" required /><Field name="senderEmail" label="Email" type="email" /></FieldGrid><Field name="pickupAddress" label="Pickup address" required /><FieldGrid><StateCitySelect prefix="pickup" custom={customCities} canAdd={false} defaultState={freeTextLocations ? "" : "Lagos"} freeText={freeTextLocations} /></FieldGrid></section>
+          <section className="card space-y-4 p-5"><h3 className="text-sm font-semibold">Recipient</h3><Field name="recipientName" label="Name" required /><FieldGrid><Field name="recipientPhone" label="Phone" type="tel" required /><Field name="recipientEmail" label="Email" type="email" /></FieldGrid><Field name="deliveryAddress" label="Delivery address" required /><FieldGrid><StateCitySelect prefix="delivery" custom={customCities} canAdd={false} defaultState={freeTextLocations ? "" : "Lagos"} freeText={freeTextLocations} /></FieldGrid></section>
         </div>
         <section className="card space-y-4 p-5"><h3 className="text-sm font-semibold">Package & service</h3><Field name="packageDescription" label="What are you sending?" required />
           <FieldGrid cols={3}><SelectField name="packageType" label="Type" defaultValue="PARCEL" options={["DOCUMENT", "PARCEL", "FRAGILE", "FOOD", "PHARMACY", "GROCERY", "ELECTRONICS", "OTHER"].map((v) => ({ value: v, label: v[0] + v.slice(1).toLowerCase() }))} /><Field name="weightKg" label="Weight (kg)" type="number" step="0.1" min="0.1" defaultValue="1" /><SelectField name="priority" label="Service" defaultValue="STANDARD" options={[{ value: "STANDARD", label: "Standard" }, { value: "EXPRESS", label: "Express" }, { value: "SAME_DAY", label: "Same day" }]} /></FieldGrid>

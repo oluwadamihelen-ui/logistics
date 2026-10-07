@@ -55,3 +55,33 @@ export const updateZoneAction = defineAction({
   schema: z.object({ id: z.string(), name: z.string().trim().min(2).max(80).optional(), areas: z.string().max(1000).optional(), isActive: z.boolean().optional() }),
   handler: async (ctx, { id, areas, ...i }) => { await guardMutation(ctx.companyId); const z0 = await ctx.db.zone.findFirst({ where: { id } }); if (!z0) throw new AppError("NOT_FOUND", "Zone not found"); await ctx.db.zone.update({ where: { id }, data: { ...i, ...(areas !== undefined ? { areas: areas.split(",").map((s) => s.trim()).filter(Boolean) } : {}) } }); await auditFrom(ctx, "zone.updated", "Zone", id, z0, { ...i, areas }); return true; },
 });
+
+// ───────── Cities (extend the built-in state → city lists) ─────────
+import { NG_STATES } from "@/lib/locations/ng";
+
+const cityName = z.string().trim().min(2).max(60).regex(/^[\p{L}0-9 .'’()\/-]+$/u, "Use letters, numbers and basic punctuation only");
+
+export const addCityAction = defineAction({
+  permissions: ["hubs.manage"],
+  schema: z.object({ state: z.enum(NG_STATES as [string, ...string[]]), name: cityName }),
+  handler: async (ctx, i) => {
+    await guardMutation(ctx.companyId);
+    const existing = await ctx.db.cityOption.findFirst({ where: { state: i.state, name: { equals: i.name, mode: "insensitive" } } });
+    if (existing) return { id: existing.id, name: existing.name, state: existing.state };
+    const c = await ctx.db.cityOption.create({ data: { state: i.state, name: i.name } as any });
+    await auditFrom(ctx, "city.added", "CityOption", c.id, undefined, i);
+    return { id: c.id, name: c.name, state: c.state };
+  },
+});
+
+export const deleteCityAction = defineAction({
+  permissions: ["hubs.manage"],
+  schema: z.object({ id: z.string() }),
+  handler: async (ctx, { id }) => {
+    const c = await ctx.db.cityOption.findFirst({ where: { id } });
+    if (!c) throw new AppError("NOT_FOUND", "City not found");
+    await ctx.db.cityOption.delete({ where: { id } });
+    await auditFrom(ctx, "city.removed", "CityOption", id, c, undefined);
+    return true;
+  },
+});

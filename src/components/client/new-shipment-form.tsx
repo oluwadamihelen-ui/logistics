@@ -3,12 +3,13 @@ import * as React from "react";
 import { Form, Field, FieldGrid, SelectField, TextareaField } from "./form";
 import { createShipmentAction, quoteAction } from "@/app/(app)/shipments/actions";
 import { useToast } from "./toast";
+import { StateCitySelect } from "./state-city-select";
 import { money } from "@/lib/utils/format";
 
 interface Cust { id: string; name: string; phone: string; email: string | null }
 interface Quote { matched: boolean; total: number; ruleName: string | null; lines: { label: string; amount: number }[] }
 
-export function NewShipmentForm({ customers, branches, pickupPoints, currency, canOverride, defaultCustomerId }: { customers: Cust[]; branches: { id: string; name: string }[]; pickupPoints: { id: string; name: string; address: string }[]; currency: string; canOverride: boolean; defaultCustomerId?: string }) {
+export function NewShipmentForm({ customers, branches, pickupPoints, currency, canOverride, defaultCustomerId, customCities, canAddCity, freeTextLocations }: { customers: Cust[]; branches: { id: string; name: string }[]; pickupPoints: { id: string; name: string; address: string }[]; currency: string; canOverride: boolean; defaultCustomerId?: string; customCities: Record<string, string[]>; canAddCity: boolean; freeTextLocations: boolean }) {
   const toast = useToast();
   const ref = React.useRef<HTMLDivElement>(null);
   const [quote, setQuote] = React.useState<Quote | null>(null);
@@ -53,7 +54,7 @@ export function NewShipmentForm({ customers, branches, pickupPoints, currency, c
             <Field name="senderName" label="Sender name" required />
             <FieldGrid><Field name="senderPhone" label="Phone" type="tel" required /><Field name="senderEmail" label="Email" type="email" /></FieldGrid>
             <Field name="pickupAddress" label="Pickup address" required />
-            <FieldGrid><Field name="pickupCity" label="City / area" required /><Field name="pickupState" label="State" required defaultValue="Lagos" /></FieldGrid>
+            <FieldGrid><StateCitySelect prefix="pickup" custom={customCities} canAdd={canAddCity} defaultState={freeTextLocations ? "" : "Lagos"} freeText={freeTextLocations} /></FieldGrid>
             <Field name="pickupScheduledAt" label="Pickup time (optional)" type="datetime-local" />
           </section>
           <section className="card space-y-4 p-5">
@@ -73,7 +74,7 @@ export function NewShipmentForm({ customers, branches, pickupPoints, currency, c
             ) : (
               <>
                 <Field name="deliveryAddress" label="Delivery address" required />
-                <FieldGrid><Field name="deliveryCity" label="City / area" required /><Field name="deliveryState" label="State" required defaultValue="Lagos" /></FieldGrid>
+                <FieldGrid><StateCitySelect prefix="delivery" custom={customCities} canAdd={canAddCity} defaultState={freeTextLocations ? "" : "Lagos"} freeText={freeTextLocations} /></FieldGrid>
               </>
             )}
             <TextareaField name="specialInstructions" label="Special instructions" rows={2} />
