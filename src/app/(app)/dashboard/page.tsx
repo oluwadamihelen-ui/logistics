@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Card, CardHeader, EmptyState, PageHeader, StatCard } from "@/components/ui";
+import { Card, CardHeader, EmptyState, PageHeader } from "@/components/ui";
 import { HBarChart, RevenueChart, StackedPerfChart, VolumeChart } from "@/components/client/charts";
 import { requirePageContext } from "@/lib/platform/context";
 import { prisma } from "@/lib/platform/db";
