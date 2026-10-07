@@ -462,6 +462,10 @@ model User {
   deniedPermissions  String[]
   failedLoginCount   Int       @default(0)
   lockedUntil        DateTime?
+  /// TOTP two-factor auth. The secret is stored AES-GCM encrypted (see src/lib/platform/two-factor.ts).
+  totpSecret         String?
+  totpEnabled        Boolean   @default(false)
+  totpRecoveryHashes String[]
   lastLoginAt        DateTime?
   tokenVersion       Int       @default(0)
   createdAt          DateTime  @default(now())
@@ -471,9 +475,36 @@ model User {
   driver         Driver?
   notifications  Notification[]
   preferences    NotificationPreference[]
+  pushDevices    PushDevice[]
 
   @@index([companyId, role])
   @@index([companyId, isActive])
+}
+
+/// Single-use password-reset token. Only the SHA-256 hash is stored.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
+
+/// Registered mobile/web push endpoints (FCM registration tokens).
+model PushDevice {
+  id         String   @id @default(cuid())
+  companyId  String
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String   @unique
+  platform   String
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([companyId, userId])
 }
 
 model StaffProfile {
@@ -534,6 +565,12 @@ model Subscription {
   pendingInterval      BillingInterval?
   paystackCustomerCode String?
   paystackSubscriptionCode String?
+  /// Auto-renewal: reusable Paystack card authorization (never the card number).
+  autoRenew            Boolean            @default(false)
+  paystackAuthCode     String?
+  cardLast4            String?
+  cardBrand            String?
+  billingEmail         String?
   /// Per-company overrides of plan limits (enterprise deals).
   limitOverrides       Json?
   createdAt            DateTime           @default(now())

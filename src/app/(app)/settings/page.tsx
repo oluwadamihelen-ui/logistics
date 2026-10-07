@@ -10,6 +10,7 @@ import { changeOwnPasswordAction, createUserAction, resetPasswordAction, updateC
 import { ApiKeyForm, WebhookForm } from "@/components/client/api-key-form";
 import { revokeApiKeyAction, deleteWebhookAction } from "./api-actions";
 import { getEntitlements } from "@/lib/platform/entitlements";
+import { TwoFactorPanel } from "@/components/client/two-factor-panel";
 import { ChangePassword } from "@/components/client/change-password";
 import { relativeTime, titleCase } from "@/lib/utils/format";
 
@@ -74,7 +75,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
       {tab === "team" && <TeamTab ctx={ctx} />}
       {tab === "api" && <ApiTab ctx={ctx} />}
-      {tab === "security" && <Card className="max-w-md"><CardHeader title="Change password" subtitle="You'll be signed out on all devices." /><div className="p-5"><ChangePassword action={changeOwnPasswordAction} /></div></Card>}
+      {tab === "security" && <SecurityTab ctx={ctx} />}
     </>
   );
 }
@@ -139,6 +140,16 @@ async function ApiTab({ ctx }: { ctx: Awaited<ReturnType<typeof requirePageConte
           {!keys.length && <TR><TD colSpan={6} className="text-center text-slate-500">No API keys</TD></TR>}</TBody></Table></Card>
       <Card><CardHeader title="Webhooks" subtitle="Signed with HMAC-SHA256: X-Webhook-Signature = v1=HMAC(secret, timestamp + '.' + body)" action={manage && <WebhookForm />} />
         <Table><THead><TH>URL</TH><TH>Events</TH><TH>{""}</TH></THead><TBody>{hooks.map((h) => <TR key={h.id}><TD className="font-mono text-xs">{h.url}</TD><TD className="text-xs">{h.events.join(", ")}</TD><TD className="text-right">{manage && <ActionButton small variant="ghost" label="Delete" confirm="Delete this webhook?" action={deleteWebhookAction} args={{ id: h.id }} />}</TD></TR>)}{!hooks.length && <TR><TD colSpan={3} className="text-center text-slate-500">No webhooks</TD></TR>}</TBody></Table></Card>
+    </div>
+  );
+}
+
+async function SecurityTab({ ctx }: { ctx: Awaited<ReturnType<typeof requirePageContext>> }) {
+  const me = await prisma.user.findUniqueOrThrow({ where: { id: ctx.user.id }, select: { totpEnabled: true, totpRecoveryHashes: true } });
+  return (
+    <div className="grid max-w-4xl gap-4 md:grid-cols-2">
+      <Card><CardHeader title="Change password" subtitle="You'll be signed out on all devices." /><div className="p-5"><ChangePassword action={changeOwnPasswordAction} /></div></Card>
+      <Card><CardHeader title="Two-factor authentication" subtitle="Authenticator-app codes (TOTP)" /><div className="p-5"><TwoFactorPanel enabled={me.totpEnabled} recoveryLeft={me.totpRecoveryHashes.length} /></div></Card>
     </div>
   );
 }
