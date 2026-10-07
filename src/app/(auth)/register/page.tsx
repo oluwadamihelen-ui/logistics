@@ -23,7 +23,7 @@ function RegisterForm() {
           onSuccess={async (d) => {
             const pw = (document.getElementById("password") as HTMLInputElement | null)?.value;
             await signIn("credentials", { email: d.email, password: pw, redirect: false });
-            router.push("/");
+            router.push("/home");
             router.refresh();
           }}
         >

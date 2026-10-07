@@ -30,7 +30,7 @@ function LoginForm() {
     if (res?.error === "TOTP_REQUIRED") { setNeedTotp(true); return; }
     if (res?.error) { setError(MESSAGES[res.error] ?? "Incorrect email or password."); return; }
     const cb = params.get("callbackUrl");
-    router.push(cb && cb.startsWith("/") && !cb.startsWith("//") ? cb : "/");
+    router.push(cb && cb.startsWith("/") && !cb.startsWith("//") ? cb : "/home");
     router.refresh();
   }
 
