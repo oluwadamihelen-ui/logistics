@@ -31,3 +31,7 @@ body { @apply bg-surface text-ink antialiased; font-family: Inter, ui-sans-serif
 
 /* Route-line motif used in empty states and headers */
 .route-motif { background-image: radial-gradient(circle at 1px 1px, rgb(var(--line)) 1px, transparent 0); background-size: 14px 14px; }
+
+/* Hide scrollbars everywhere (scrolling still works by wheel, touch, keyboard and trackpad). */
+* { scrollbar-width: none; -ms-overflow-style: none; }
+*::-webkit-scrollbar { display: none; width: 0; height: 0; }
