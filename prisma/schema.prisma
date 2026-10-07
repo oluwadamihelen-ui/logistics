@@ -68,6 +68,7 @@ enum ShipmentStatus {
   AT_HUB
   SORTING
   READY_FOR_DISPATCH
+  READY_FOR_PICKUP
   ASSIGNED_FOR_DELIVERY
   OUT_FOR_DELIVERY
   DELIVERED
@@ -200,6 +201,13 @@ enum HubType {
   HUB
   WAREHOUSE
   SORTING_CENTER
+  PICKUP_POINT
+}
+
+/// How the recipient receives the shipment.
+enum DeliveryMethod {
+  HOME_DELIVERY
+  HUB_PICKUP
 }
 
 enum RouteStatus {
@@ -662,8 +670,12 @@ model Hub {
   lat       Float?
   lng       Float?
   isActive  Boolean  @default(true)
+  /// Recipients can collect shipments here (hub / service centre / pickup point).
+  allowsCollection Boolean @default(false)
+  openingHours     String?
   createdAt DateTime @default(now())
 
+  collectionShipments Shipment[] @relation("CollectionHub")
   currentShipments Shipment[] @relation("CurrentHub")
   originShipments  Shipment[] @relation("OriginHub")
   events           ShipmentEvent[]
@@ -826,6 +838,11 @@ model Shipment {
   driver         Driver?        @relation(fields: [driverId], references: [id], onDelete: SetNull)
   vehicleId      String?
   vehicle        Vehicle?       @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  deliveryMethod DeliveryMethod @default(HOME_DELIVERY)
+  collectionHubId String?
+  collectionHub  Hub?           @relation("CollectionHub", fields: [collectionHubId], references: [id], onDelete: SetNull)
+  readyForPickupAt DateTime?
+  collectedByName String?
   /// Dispatch board column granularity for the driver leg.
   driverAccepted Boolean        @default(false)
   attemptCount   Int            @default(0)

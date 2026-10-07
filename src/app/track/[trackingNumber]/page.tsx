@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui";
 import { Timeline } from "@/components/timeline";
 import { getPublicTracking } from "@/lib/logistics/shipments";
 import { normalizeTracking } from "@/lib/logistics/tracking";
-import { PUBLIC_STAGES, publicStageIndex, STATUS_LABEL, STATUS_TONE } from "@/lib/logistics/shipment-status";
+import { PUBLIC_STAGES, PUBLIC_STAGES_PICKUP, publicStageIndex, STATUS_LABEL, STATUS_TONE } from "@/lib/logistics/shipment-status";
 import { rateLimit, clientIp } from "@/lib/platform/rate-limit";
 import { dateTime, titleCase, cn } from "@/lib/utils/format";
 import { brand } from "@/config/brand";
@@ -39,14 +39,14 @@ export default async function TrackPage({ params }: { params: Promise<{ tracking
             <div className="p-6">
               {t.status === "CANCELLED" ? <p className="text-sm text-slate-600">This shipment was cancelled.</p> : (
                 <ol className="flex items-start justify-between" aria-label="Delivery progress">
-                  {PUBLIC_STAGES.map((st, i) => {
+                  {(t.deliveryMethod === "HUB_PICKUP" ? PUBLIC_STAGES_PICKUP : PUBLIC_STAGES).map((st, i) => {
                     const idx = publicStageIndex(t.status); const done = i <= idx;
                     return (
                       <li key={st} className="flex flex-1 flex-col items-center text-center">
                         <div className="flex w-full items-center">
                           <span className={cn("h-0.5 flex-1", i === 0 ? "opacity-0" : done ? "bg-brand" : "bg-line")} />
                           <span className={cn("flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold", done ? "bg-brand text-white" : "bg-line text-slate-400")}>{done ? "✓" : i + 1}</span>
-                          <span className={cn("h-0.5 flex-1", i === PUBLIC_STAGES.length - 1 ? "opacity-0" : i < idx ? "bg-brand" : "bg-line")} />
+                          <span className={cn("h-0.5 flex-1", i === 4 ? "opacity-0" : i < idx ? "bg-brand" : "bg-line")} />
                         </div>
                         <span className={cn("mt-2 text-[11px] leading-tight", done ? "font-semibold text-ink" : "text-slate-400")}>{st}</span>
                       </li>
@@ -56,11 +56,19 @@ export default async function TrackPage({ params }: { params: Promise<{ tracking
               )}
               <dl className="mt-6 grid grid-cols-2 gap-4 text-sm">
                 <div><dt className="text-xs text-slate-500">From</dt><dd className="font-medium">{t.origin}</dd></div>
-                <div><dt className="text-xs text-slate-500">To</dt><dd className="font-medium">{t.destination}</dd></div>
-                <div><dt className="text-xs text-slate-500">{t.deliveredAt ? "Delivered" : "Estimated delivery"}</dt><dd className="font-medium">{dateTime(t.deliveredAt ?? t.expectedDeliveryAt)}</dd></div>
+                <div><dt className="text-xs text-slate-500">{t.pickupPoint ? "Collect at" : "To"}</dt><dd className="font-medium">{t.destination}</dd></div>
+                <div><dt className="text-xs text-slate-500">{t.deliveredAt ? (t.pickupPoint ? "Collected" : "Delivered") : "Estimated arrival"}</dt><dd className="font-medium">{dateTime(t.deliveredAt ?? t.expectedDeliveryAt)}</dd></div>
                 <div><dt className="text-xs text-slate-500">Service</dt><dd className="font-medium">{titleCase(t.priority)} · {titleCase(t.packageType)}</dd></div>
                 {t.driver && <div className="col-span-2"><dt className="text-xs text-slate-500">Your {t.driver.kind === "RIDER" ? "rider" : "driver"}</dt><dd className="font-medium">{t.driver.firstName} is on the way</dd></div>}
               </dl>
+              {t.pickupPoint && t.status === "READY_FOR_PICKUP" && (
+                <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                  <p className="font-semibold">Ready for you to collect</p>
+                  <p className="mt-1">{t.pickupPoint.name}{t.pickupPoint.address ? ` — ${t.pickupPoint.address}` : ""}</p>
+                  {t.pickupPoint.openingHours && <p>Open: {t.pickupPoint.openingHours}</p>}
+                  <p className="mt-2">Bring a valid ID and the 6-digit collection code we sent you by SMS/email.</p>
+                </div>
+              )}
               {t.status === "DELIVERED" && <RateDelivery trackingNumber={t.trackingNumber} already={rated} />}
               {t.proof && <div className="mt-5 rounded-lg bg-emerald-50 p-4 text-sm text-emerald-900"><p className="font-semibold">Proof of delivery</p><p>Received{t.proof.recipientName ? ` by ${t.proof.recipientName}` : ""} on {dateTime(t.proof.at)}.{t.proof.hasSignature ? " Signature captured." : ""}{t.proof.hasPhoto ? " Photo captured." : ""}</p></div>}
             </div>

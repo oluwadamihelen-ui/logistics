@@ -27,12 +27,13 @@ export default async function DashboardPage() {
     { label: "Picked up", value: k.pickedUp, href: "/shipments?status=PICKED_UP", tone: "bg-indigo-500" },
     { label: "At hub", value: k.atHub, href: "/shipments?status=AT_HUB,SORTING", tone: "bg-violet-500" },
     { label: "Ready / assigned", value: k.readyForDispatch, href: "/dispatch", tone: "bg-sky-500" },
+    { label: "Ready for pickup", value: k.readyForPickup, href: "/shipments?status=READY_FOR_PICKUP", tone: "bg-amber-400" },
     { label: "Out for delivery", value: k.outForDelivery, href: "/shipments?status=OUT_FOR_DELIVERY", tone: "bg-blue-600" },
     { label: "Delivered today", value: k.deliveredToday, tone: "bg-emerald-500" },
     { label: "Failed today", value: k.failedToday, href: "/shipments?status=DELIVERY_FAILED", tone: "bg-red-500" },
   ];
 
-  const activeTotal = pipeline.slice(0, 5).reduce((a, x) => a + x.value, 0);
+  const activeTotal = pipeline.slice(0, 6).reduce((a, x) => a + x.value, 0);
 
   return (
     <>
@@ -52,7 +53,7 @@ export default async function DashboardPage() {
       <section className="mt-4 grid gap-4 xl:grid-cols-3">
         <Card className="flex flex-col xl:col-span-2">
           <CardHeader title="Shipment pipeline" subtitle="Where every active shipment is right now" />
-          <div className="grid flex-1 grid-cols-2 gap-px bg-line sm:grid-cols-4 lg:grid-cols-7">
+          <div className="grid flex-1 grid-cols-2 gap-px bg-line sm:grid-cols-4">
             {pipeline.map((x) => {
               const inner = (<div className="h-full bg-white px-4 py-5 transition hover:bg-slate-50"><span className={`mb-3 block h-1 w-8 rounded-full ${x.tone}`} /><p className="text-2xl font-semibold tabular-nums">{x.value}</p><p className="mt-0.5 text-xs text-slate-500">{x.label}</p></div>);
               return x.href ? <Link key={x.label} href={x.href} className="block">{inner}</Link> : <div key={x.label}>{inner}</div>;
@@ -61,7 +62,7 @@ export default async function DashboardPage() {
           {activeTotal > 0 && (
             <div className="border-t border-line px-5 py-4">
               <div className="flex h-2.5 overflow-hidden rounded-full bg-slate-100" role="img" aria-label="Share of active shipments by stage">
-                {pipeline.slice(0, 5).filter((x) => x.value > 0).map((x) => <span key={x.label} className={x.tone} style={{ width: `${(x.value / activeTotal) * 100}%` }} title={`${x.label}: ${x.value}`} />)}
+                {pipeline.slice(0, 6).filter((x) => x.value > 0).map((x) => <span key={x.label} className={x.tone} style={{ width: `${(x.value / activeTotal) * 100}%` }} title={`${x.label}: ${x.value}`} />)}
               </div>
               <p className="mt-2 text-xs text-slate-500">{activeTotal} active shipment{activeTotal === 1 ? "" : "s"} in progress</p>
             </div>

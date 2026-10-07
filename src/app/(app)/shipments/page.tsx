@@ -22,7 +22,7 @@ export default async function ShipmentsPage({ searchParams }: { searchParams: Pr
   ]);
   const params = { q: sp.q, status: sp.status, driver: sp.driver, branch: sp.branch, cod: sp.cod, unassigned: sp.unassigned };
   const quick: { label: string; status?: string }[] = [
-    { label: "All" }, { label: "Pending pickup", status: "CREATED,CONFIRMED,PICKUP_ASSIGNED" }, { label: "At hub", status: "AT_HUB,SORTING,READY_FOR_DISPATCH" },
+    { label: "All" }, { label: "Pending pickup", status: "CREATED,CONFIRMED,PICKUP_ASSIGNED" }, { label: "At hub", status: "AT_HUB,SORTING,READY_FOR_DISPATCH" }, { label: "Ready for pickup", status: "READY_FOR_PICKUP" },
     { label: "Out for delivery", status: "OUT_FOR_DELIVERY" }, { label: "Delivered", status: "DELIVERED" }, { label: "Failed", status: "DELIVERY_FAILED,RESCHEDULED" }, { label: "Returns", status: "RETURNING,RETURNED_TO_HUB,RETURNED_TO_SENDER" },
   ];
 

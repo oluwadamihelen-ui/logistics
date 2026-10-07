@@ -17,6 +17,8 @@ export const EVENT_RULES = {
   "shipment.assigned": { category: "DISPATCH", priority: "HIGH", permission: "driver.app", dedupeMinutes: 0 },
   "shipment.delivered": { category: "DELIVERY", priority: "LOW", permission: "shipments.edit", dedupeMinutes: 0 },
   "shipment.delivery_failed": { category: "DELIVERY", priority: "HIGH", permission: "dispatch.manage", dedupeMinutes: 0 },
+  "shipment.ready_for_pickup": { category: "SHIPMENT", priority: "LOW", permission: "shipments.edit", dedupeMinutes: 0 },
+  "shipment.uncollected": { category: "SHIPMENT", priority: "MEDIUM", permission: "shipments.edit", dedupeMinutes: 1440 },
   "shipment.returned": { category: "SHIPMENT", priority: "MEDIUM", permission: "shipments.return", dedupeMinutes: 0 },
   "shipment.overdue": { category: "DELIVERY", priority: "HIGH", permission: "dispatch.manage", dedupeMinutes: 720 },
   "pickup.requested": { category: "PICKUP", priority: "MEDIUM", permission: "dispatch.manage", dedupeMinutes: 0 },

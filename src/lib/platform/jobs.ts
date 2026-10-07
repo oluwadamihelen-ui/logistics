@@ -7,7 +7,7 @@ import { renewDueSubscriptions } from "./billing";
 import { resolveAccess } from "./entitlements";
 import { emitSafe } from "./notifications/engine";
 import { scanExpiries } from "../logistics/fleet";
-import { UNDELIVERED_STATUSES } from "../logistics/shipment-status";
+import { PICKUP_HOLD_DAYS, UNDELIVERED_STATUSES } from "../logistics/shipment-status";
 import type { ServiceCtx } from "./service";
 
 export async function runMaintenance(now = new Date()) {
@@ -37,6 +37,9 @@ export async function runMaintenance(now = new Date()) {
       // 3. Overdue deliveries
       const overdue = await svc.db.shipment.count({ where: { status: { in: UNDELIVERED_STATUSES }, expectedDeliveryAt: { lt: now } } });
       if (overdue > 0) { await emitSafe(svc, { type: "shipment.overdue", title: `${overdue} deliver${overdue === 1 ? "y is" : "ies are"} overdue`, body: "Review undelivered shipments past their expected date.", actionUrl: "/shipments?status=OUT_FOR_DELIVERY,ASSIGNED_FOR_DELIVERY,READY_FOR_DISPATCH", dedupeKey: `overdue:${now.toISOString().slice(0, 10)}` }); summary.overdueAlerts++; }
+      // 3b. Hub-pickup shipments nobody has collected within the hold period
+      const uncollected = await svc.db.shipment.count({ where: { status: "READY_FOR_PICKUP", readyForPickupAt: { lt: new Date(now.getTime() - PICKUP_HOLD_DAYS * 86400_000) } } });
+      if (uncollected > 0) await emitSafe(svc, { type: "shipment.uncollected", title: `${uncollected} shipment${uncollected === 1 ? "" : "s"} uncollected for ${PICKUP_HOLD_DAYS}+ days`, body: "Contact the recipients or start a return to sender.", actionUrl: "/shipments?status=READY_FOR_PICKUP", dedupeKey: `uncollected:${now.toISOString().slice(0, 10)}` });
       // 4. Drivers on active work with no GPS for 30+ minutes
       const stale = await svc.db.driver.findMany({ where: { isActive: true, status: { in: ["ON_DELIVERY", "ON_PICKUP"] }, lastLocationAt: { lt: new Date(now.getTime() - 30 * 60_000) } } });
       for (const d of stale) { await emitSafe(svc, { type: "driver.offline_active", title: `${d.name} has been offline during an active delivery`, body: `No GPS update for ${Math.round((now.getTime() - (d.lastLocationAt?.getTime() ?? now.getTime())) / 60000)} minutes.`, entity: { type: "Driver", id: d.id }, actionUrl: `/drivers/${d.id}`, branchId: d.branchId }); summary.offlineAlerts++; }

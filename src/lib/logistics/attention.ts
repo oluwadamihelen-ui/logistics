@@ -2,14 +2,14 @@
 import { prisma, num } from "../platform/db";
 import type { ServiceCtx } from "../platform/service";
 import { collectExpiries } from "./fleet";
-import { UNDELIVERED_STATUSES } from "./shipment-status";
+import { PICKUP_HOLD_DAYS, UNDELIVERED_STATUSES } from "./shipment-status";
 
 export interface AttentionItem { id: string; priority: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW"; text: string; href: string }
 
 export async function getAttention(svc: ServiceCtx, can: (p: any) => boolean): Promise<AttentionItem[]> {
   const out: AttentionItem[] = [];
   const now = new Date();
-  const [sos, overdue, unassigned, failedPending, held, tickets, disputes, invoicesOverdue, drivers] = await Promise.all([
+  const [sos, overdue, unassigned, failedPending, held, tickets, disputes, invoicesOverdue, drivers, uncollected] = await Promise.all([
     can("dispatch.view") ? svc.db.driver.findMany({ where: { status: "EMERGENCY" }, select: { id: true, name: true } }) : [],
     can("shipments.view") ? svc.db.shipment.count({ where: { status: { in: UNDELIVERED_STATUSES }, expectedDeliveryAt: { lt: now } } }) : 0,
     can("dispatch.view") ? svc.db.shipment.count({ where: { status: { in: ["CONFIRMED", "READY_FOR_DISPATCH"] }, driverId: null, createdAt: { lt: new Date(now.getTime() - 4 * 3600_000) } } }) : 0,
@@ -19,10 +19,12 @@ export async function getAttention(svc: ServiceCtx, can: (p: any) => boolean): P
     can("cod.view") ? svc.db.codTransaction.count({ where: { status: "DISPUTED" } }) : 0,
     can("finance.view") ? svc.db.invoice.count({ where: { status: { in: ["ISSUED", "PARTIALLY_PAID"] }, dueDate: { lt: now } } }) : 0,
     can("dispatch.view") ? svc.db.driver.findMany({ where: { isActive: true, status: { in: ["ON_DELIVERY", "ON_PICKUP"] }, lastLocationAt: { lt: new Date(now.getTime() - 30 * 60_000) } }, select: { id: true, name: true, lastLocationAt: true } }) : [],
+    can("shipments.view") ? svc.db.shipment.count({ where: { status: "READY_FOR_PICKUP", readyForPickupAt: { lt: new Date(now.getTime() - PICKUP_HOLD_DAYS * 86400_000) } } }) : 0,
   ]);
   for (const d of sos) out.push({ id: `sos-${d.id}`, priority: "CRITICAL", text: `${d.name} has an active emergency (SOS).`, href: `/drivers/${d.id}` });
   for (const d of drivers) out.push({ id: `gps-${d.id}`, priority: "HIGH", text: `${d.name} is on a task but hasn't reported GPS for ${Math.round((now.getTime() - d.lastLocationAt!.getTime()) / 60000)} minutes.`, href: `/drivers/${d.id}` });
   if (overdue) out.push({ id: "overdue", priority: "HIGH", text: `${overdue} ${overdue === 1 ? "delivery is" : "deliveries are"} overdue.`, href: "/shipments?status=OUT_FOR_DELIVERY,ASSIGNED_FOR_DELIVERY,READY_FOR_DISPATCH,AT_HUB" });
+  if (uncollected) out.push({ id: "uncollected", priority: "MEDIUM", text: `${uncollected} shipment${uncollected > 1 ? "s have" : " has"} waited over ${PICKUP_HOLD_DAYS} days for collection.`, href: "/shipments?status=READY_FOR_PICKUP" });
   if (failedPending) out.push({ id: "failed", priority: "HIGH", text: `${failedPending} failed ${failedPending === 1 ? "delivery needs" : "deliveries need"} a decision (reschedule, retry or return).`, href: "/shipments?status=DELIVERY_FAILED" });
   if (unassigned) out.push({ id: "unassigned", priority: "MEDIUM", text: `${unassigned} shipment${unassigned > 1 ? "s have" : " has"} waited over 4 hours without a driver.`, href: "/dispatch" });
   if (disputes) out.push({ id: "cod-disputes", priority: "HIGH", text: `${disputes} COD collection${disputes > 1 ? "s" : ""} don't match the amount due.`, href: "/cod?status=DISPUTED" });

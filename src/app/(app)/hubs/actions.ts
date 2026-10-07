@@ -26,7 +26,7 @@ export const updateBranchAction = defineAction({
 
 export const createHubAction = defineAction({
   permissions: ["hubs.manage"],
-  schema: z.object({ name: z.string().trim().min(2).max(80), code, type: z.enum(["HUB", "WAREHOUSE", "SORTING_CENTER"]).default("HUB"), branchId: z.string().optional(), city: z.string().max(80).optional(), state: z.string().max(80).optional(), addressLine: z.string().max(200).optional(), ...geo }),
+  schema: z.object({ name: z.string().trim().min(2).max(80), code, type: z.enum(["HUB", "WAREHOUSE", "SORTING_CENTER", "PICKUP_POINT"]).default("HUB"), allowsCollection: z.boolean().default(false), openingHours: z.string().max(120).optional(), branchId: z.string().optional(), city: z.string().max(80).optional(), state: z.string().max(80).optional(), addressLine: z.string().max(200).optional(), ...geo }),
   handler: async (ctx, i) => {
     await guardMutation(ctx.companyId); await assertOwned(ctx.db, { branch: i.branchId });
     if (await ctx.db.hub.findFirst({ where: { code: i.code } })) throw new AppError("CONFLICT", "Hub code already in use");
@@ -35,7 +35,7 @@ export const createHubAction = defineAction({
 });
 export const updateHubAction = defineAction({
   permissions: ["hubs.manage"],
-  schema: z.object({ id: z.string(), name: z.string().trim().min(2).max(80).optional(), type: z.enum(["HUB", "WAREHOUSE", "SORTING_CENTER"]).optional(), branchId: z.string().optional(), isActive: z.boolean().optional(), ...geo }),
+  schema: z.object({ id: z.string(), name: z.string().trim().min(2).max(80).optional(), type: z.enum(["HUB", "WAREHOUSE", "SORTING_CENTER", "PICKUP_POINT"]).optional(), allowsCollection: z.boolean().optional(), openingHours: z.string().max(120).optional(), branchId: z.string().optional(), isActive: z.boolean().optional(), ...geo }),
   handler: async (ctx, { id, ...i }) => { await guardMutation(ctx.companyId); await assertOwned(ctx.db, { branch: i.branchId }); const h = await ctx.db.hub.findFirst({ where: { id } }); if (!h) throw new AppError("NOT_FOUND", "Hub not found"); await ctx.db.hub.update({ where: { id }, data: i }); await auditFrom(ctx, "hub.updated", "Hub", id, h, i); return true; },
 });
 

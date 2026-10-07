@@ -8,11 +8,13 @@ import { money } from "@/lib/utils/format";
 interface Cust { id: string; name: string; phone: string; email: string | null }
 interface Quote { matched: boolean; total: number; ruleName: string | null; lines: { label: string; amount: number }[] }
 
-export function NewShipmentForm({ customers, branches, currency, canOverride, defaultCustomerId }: { customers: Cust[]; branches: { id: string; name: string }[]; currency: string; canOverride: boolean; defaultCustomerId?: string }) {
+export function NewShipmentForm({ customers, branches, pickupPoints, currency, canOverride, defaultCustomerId }: { customers: Cust[]; branches: { id: string; name: string }[]; pickupPoints: { id: string; name: string; address: string }[]; currency: string; canOverride: boolean; defaultCustomerId?: string }) {
   const toast = useToast();
   const ref = React.useRef<HTMLDivElement>(null);
   const [quote, setQuote] = React.useState<Quote | null>(null);
   const [loading, setLoading] = React.useState(false);
+  const [method, setMethod] = React.useState<"HOME_DELIVERY" | "HUB_PICKUP">("HOME_DELIVERY");
+  const pickup = method === "HUB_PICKUP";
 
   const el = (n: string) => ref.current?.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${n}"]`) ?? null;
   function onCustomer(id: string) {
@@ -24,7 +26,7 @@ export function NewShipmentForm({ customers, branches, currency, canOverride, de
   async function getQuote() {
     const g = (n: string) => el(n)?.value ?? "";
     setLoading(true);
-    const res = await quoteAction({ pickupCity: g("pickupCity"), pickupState: g("pickupState"), deliveryCity: g("deliveryCity"), deliveryState: g("deliveryState"), weightKg: g("weightKg") || 1, priority: g("priority") || "STANDARD", packageType: g("packageType") || "PARCEL", declaredValue: g("declaredValue") || 0, codAmount: g("codAmount") || 0, customerId: g("customerId") || undefined } as any);
+    const res = await quoteAction({ pickupCity: g("pickupCity"), pickupState: g("pickupState"), deliveryCity: g("deliveryCity") || undefined, deliveryState: g("deliveryState") || undefined, deliveryMethod: method, collectionHubId: g("collectionHubId") || undefined, weightKg: g("weightKg") || 1, priority: g("priority") || "STANDARD", packageType: g("packageType") || "PARCEL", declaredValue: g("declaredValue") || 0, codAmount: g("codAmount") || 0, customerId: g("customerId") || undefined } as any);
     setLoading(false);
     if (res.ok) setQuote(res.data as Quote); else toast.push("error", res.error);
   }
@@ -58,8 +60,22 @@ export function NewShipmentForm({ customers, branches, currency, canOverride, de
             <h3 className="text-sm font-semibold">Recipient & delivery</h3>
             <Field name="recipientName" label="Recipient name" required />
             <FieldGrid><Field name="recipientPhone" label="Phone" type="tel" required /><Field name="recipientEmail" label="Email" type="email" /></FieldGrid>
-            <Field name="deliveryAddress" label="Delivery address" required />
-            <FieldGrid><Field name="deliveryCity" label="City / area" required /><Field name="deliveryState" label="State" required defaultValue="Lagos" /></FieldGrid>
+            <div>
+              <label className="label" htmlFor="deliveryMethod">How will the recipient receive it?</label>
+              <select id="deliveryMethod" name="deliveryMethod" className="input" value={method} onChange={(e) => setMethod(e.target.value as "HOME_DELIVERY" | "HUB_PICKUP")}>
+                <option value="HOME_DELIVERY">Home / address delivery</option>
+                <option value="HUB_PICKUP" disabled={pickupPoints.length === 0}>Recipient collects at a hub / pickup point{pickupPoints.length === 0 ? " (none set up)" : ""}</option>
+              </select>
+              {pickupPoints.length === 0 && <p className="mt-1 text-xs text-slate-500">Enable “customer collection” on a hub under Hubs &amp; branches to offer pickup.</p>}
+            </div>
+            {pickup ? (
+              <SelectField name="collectionHubId" label="Collection point" required placeholder="Choose where they will collect" options={pickupPoints.map((p) => ({ value: p.id, label: `${p.name}${p.address ? ` — ${p.address}` : ""}` }))} hint="The recipient gets a collection code by SMS/email once it is ready, and must show it with ID." />
+            ) : (
+              <>
+                <Field name="deliveryAddress" label="Delivery address" required />
+                <FieldGrid><Field name="deliveryCity" label="City / area" required /><Field name="deliveryState" label="State" required defaultValue="Lagos" /></FieldGrid>
+              </>
+            )}
             <TextareaField name="specialInstructions" label="Special instructions" rows={2} />
           </section>
         </div>

@@ -30,9 +30,12 @@ export const shipmentInputSchema = z.object({
   recipientName: z.string().trim().min(2).max(120),
   recipientPhone: phone,
   recipientEmail: z.string().email().optional().or(z.literal("").transform(() => undefined)),
-  deliveryAddress: z.string().trim().min(3).max(300),
-  deliveryCity: z.string().trim().min(2).max(80),
-  deliveryState: z.string().trim().min(2).max(80),
+  /** Required for HOME_DELIVERY (checked in createShipment); taken from the collection point for HUB_PICKUP. */
+  deliveryMethod: z.enum(["HOME_DELIVERY", "HUB_PICKUP"]).default("HOME_DELIVERY"),
+  collectionHubId: z.string().optional(),
+  deliveryAddress: z.string().trim().min(3).max(300).optional(),
+  deliveryCity: z.string().trim().min(2).max(80).optional(),
+  deliveryState: z.string().trim().min(2).max(80).optional(),
   deliveryLat: z.number().min(-90).max(90).optional(),
   deliveryLng: z.number().min(-180).max(180).optional(),
 

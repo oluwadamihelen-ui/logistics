@@ -7,13 +7,14 @@ import type { ServiceCtx } from "../platform/service";
 import { prisma } from "../platform/db";
 import { getProvider } from "../platform/notifications/providers";
 
-export type CustomerEvent = "shipment.created" | "shipment.out_for_delivery" | "shipment.delivered" | "shipment.delivery_failed" | "shipment.otp";
+export type CustomerEvent = "shipment.created" | "shipment.out_for_delivery" | "shipment.delivered" | "shipment.delivery_failed" | "shipment.otp" | "shipment.ready_for_pickup";
 
 export const DEFAULT_TEMPLATES: Record<CustomerEvent, string> = {
   "shipment.created": "Hi {{recipientName}}, a shipment from {{senderName}} is on its way via {{company}}. Track it: {{trackingUrl}} (ref {{trackingNumber}}).",
   "shipment.out_for_delivery": "Your {{company}} package {{trackingNumber}} is out for delivery today. Track: {{trackingUrl}}",
   "shipment.delivered": "Your {{company}} package {{trackingNumber}} has been delivered. Thank you!",
   "shipment.delivery_failed": "We couldn't deliver {{trackingNumber}} today. We'll contact you to reschedule. Track: {{trackingUrl}}",
+  "shipment.ready_for_pickup": "Your {{company}} package {{trackingNumber}} is ready for pickup at {{pickupPoint}}. Bring your ID and show collection code {{otp}}. Track: {{trackingUrl}}",
   "shipment.otp": "Your {{company}} delivery code for {{trackingNumber}} is {{otp}}. Share it only with the rider at hand-over.",
 };
 

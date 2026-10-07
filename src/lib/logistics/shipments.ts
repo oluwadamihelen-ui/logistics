@@ -9,7 +9,7 @@ import { audit } from "../platform/audit";
 import { guardMutation, getEntitlements, assertWritable } from "../platform/entitlements";
 import { emitSafe } from "../platform/notifications/engine";
 import type { ServiceCtx } from "../platform/service";
-import { canTransition, ACTIVE_STATUSES, TRANSITIONS } from "./shipment-status";
+import { canTransition, ACTIVE_STATUSES, TRANSITIONS, PICKUP_HOLD_DAYS } from "./shipment-status";
 import { formatOrderNumber, generateOtp, generateTrackingNumber, hashOtp } from "./tracking";
 import { computeQuote, type PricingRuleLike, type QuoteRequest } from "./pricing";
 import { ensureCod, recordCodCollected } from "./cod";
@@ -43,7 +43,11 @@ export async function loadPricingRules(svc: ServiceCtx): Promise<PricingRuleLike
   }));
 }
 
-export async function quoteForInput(svc: ServiceCtx, input: Pick<ShipmentInput, "pickupCity" | "pickupState" | "deliveryCity" | "deliveryState" | "weightKg" | "priority" | "packageType" | "declaredValue" | "codAmount" | "customerId">) {
+export type QuoteInput = Pick<ShipmentInput, "pickupCity" | "pickupState" | "weightKg" | "priority" | "packageType" | "declaredValue" | "codAmount" | "customerId"> & { deliveryCity?: string; deliveryState?: string };
+
+export async function quoteForInput(svc: ServiceCtx, rawInput: QuoteInput) {
+  if (!rawInput.deliveryCity || !rawInput.deliveryState) throw new AppError("VALIDATION", "Enter the delivery city and state to get a price");
+  const input = { ...rawInput, deliveryCity: rawInput.deliveryCity, deliveryState: rawInput.deliveryState };
   const [originZoneId, destinationZoneId, rules] = await Promise.all([
     resolveZoneId(svc, input.pickupCity, input.pickupState),
     resolveZoneId(svc, input.deliveryCity, input.deliveryState),
@@ -115,6 +119,22 @@ export async function syncDriverStatus(svc: ServiceCtx, driverId: string | null 
 
 // ───────────────────────── create ─────────────────────────
 
+/** Where the shipment goes: the recipient's address, or the chosen collection point. */
+export async function resolveDestination(svc: ServiceCtx, input: Pick<ShipmentInput, "deliveryMethod" | "collectionHubId" | "deliveryAddress" | "deliveryCity" | "deliveryState">) {
+  if (input.deliveryMethod === "HUB_PICKUP") {
+    if (!input.collectionHubId) throw new AppError("VALIDATION", "Choose the hub or pickup point where the recipient will collect");
+    const hub = await svc.db.hub.findFirst({ where: { id: input.collectionHubId } });
+    if (!hub) throw new AppError("NOT_FOUND", "Collection point not found");
+    if (!hub.isActive || !hub.allowsCollection) throw new AppError("INVALID_STATE", `${hub.name} is not open for customer collection`);
+    const city = hub.city ?? input.deliveryCity;
+    const state = hub.state ?? input.deliveryState;
+    if (!city || !state) throw new AppError("INVALID_STATE", `${hub.name} has no city/state set. Add its location in Hubs & branches.`);
+    return { method: "HUB_PICKUP" as const, hub, address: `${hub.name} (collection point)${hub.addressLine ? ` — ${hub.addressLine}` : ""}`, city, state, lat: hub.lat ?? undefined, lng: hub.lng ?? undefined };
+  }
+  if (!input.deliveryAddress || !input.deliveryCity || !input.deliveryState) throw new AppError("VALIDATION", "Delivery address, city and state are required for home delivery", { fields: ["deliveryAddress", "deliveryCity", "deliveryState"] });
+  return { method: "HOME_DELIVERY" as const, hub: null, address: input.deliveryAddress, city: input.deliveryCity, state: input.deliveryState, lat: undefined, lng: undefined };
+}
+
 export async function createShipment(svc: ServiceCtx, input: ShipmentInput, source: "DASHBOARD" | "PORTAL" | "PUBLIC" | "API" = "DASHBOARD") {
   await guardMutation(svc.companyId, { limit: { key: "shipmentsPerMonth" } });
   await assertOwned(svc.db, { customer: input.customerId, branch: input.branchId });
@@ -128,7 +148,8 @@ export async function createShipment(svc: ServiceCtx, input: ShipmentInput, sour
   if (!settings) throw new AppError("INVALID_STATE", "Company is not configured yet");
   if (input.codAmount > 0 && !settings.codEnabled) throw new AppError("VALIDATION", "Cash on delivery is disabled for this company");
 
-  const { quote, originZoneId, destinationZoneId } = await quoteForInput(svc, input);
+  const dest = await resolveDestination(svc, input);
+  const { quote, originZoneId, destinationZoneId } = await quoteForInput(svc, { ...input, deliveryCity: dest.city, deliveryState: dest.state });
   let deliveryFee = quote.total;
   if (input.deliveryFeeOverride !== undefined) {
     if (svc.actor && !["PORTAL", "PUBLIC"].includes(source)) deliveryFee = input.deliveryFeeOverride;
@@ -155,8 +176,9 @@ export async function createShipment(svc: ServiceCtx, input: ShipmentInput, sour
           pickupAddress: input.pickupAddress, pickupCity: input.pickupCity, pickupState: input.pickupState,
           pickupLat: input.pickupLat, pickupLng: input.pickupLng, pickupZoneId: originZoneId,
           recipientName: input.recipientName, recipientPhone: input.recipientPhone, recipientEmail: input.recipientEmail,
-          deliveryAddress: input.deliveryAddress, deliveryCity: input.deliveryCity, deliveryState: input.deliveryState,
-          deliveryLat: input.deliveryLat, deliveryLng: input.deliveryLng, deliveryZoneId: destinationZoneId,
+          deliveryAddress: dest.address, deliveryCity: dest.city, deliveryState: dest.state,
+          deliveryLat: dest.lat ?? input.deliveryLat, deliveryLng: dest.lng ?? input.deliveryLng, deliveryZoneId: destinationZoneId,
+          deliveryMethod: dest.method, collectionHubId: dest.hub?.id,
           packageDescription: input.packageDescription, packageType: input.packageType, weightKg: input.weightKg,
           lengthCm: input.lengthCm, widthCm: input.widthCm, heightCm: input.heightCm, quantity: input.quantity,
           declaredValue: input.declaredValue, codAmount: input.codAmount, deliveryFee, feePayer: input.feePayer,
@@ -176,10 +198,10 @@ export async function createShipment(svc: ServiceCtx, input: ShipmentInput, sour
 
   await addEvent(svc, shipment.id, { status: "CREATED", type: "created", description: "Shipment created", metadata: { source } });
   await ensureCod(svc, shipment);
-  await audit({ companyId: svc.companyId, actor: svc.actor, action: "shipment.created", resourceType: "Shipment", resourceId: shipment.id, after: { trackingNumber: shipment.trackingNumber, deliveryFee, codAmount: input.codAmount, source }, ip: svc.ip, userAgent: svc.userAgent });
+  await audit({ companyId: svc.companyId, actor: svc.actor, action: "shipment.created", resourceType: "Shipment", resourceId: shipment.id, after: { trackingNumber: shipment.trackingNumber, deliveryFee, codAmount: input.codAmount, source, deliveryMethod: dest.method }, ip: svc.ip, userAgent: svc.userAgent });
   await emitSafe(svc, {
     type: "shipment.created", title: `New shipment ${shipment.trackingNumber}`,
-    body: `${input.senderName} → ${input.recipientName} (${input.deliveryCity})`, entity: { type: "Shipment", id: shipment.id },
+    body: `${input.senderName} → ${input.recipientName} (${dest.method === "HUB_PICKUP" ? `collect at ${dest.hub!.name}` : dest.city})`, entity: { type: "Shipment", id: shipment.id },
     actionUrl: `/shipments/${shipment.id}`, branchId: shipment.branchId,
   });
   if (source === "PORTAL" || source === "PUBLIC") {
@@ -203,7 +225,7 @@ export interface TransitionOptions {
 
 const EVENT_TEXT: Partial<Record<ShipmentStatus, string>> = {
   CONFIRMED: "Shipment confirmed", PICKUP_ASSIGNED: "Pickup assigned", PICKED_UP: "Picked up from sender",
-  AT_HUB: "Arrived at hub", SORTING: "Sorting in progress", READY_FOR_DISPATCH: "Ready for dispatch",
+  AT_HUB: "Arrived at hub", SORTING: "Sorting in progress", READY_FOR_DISPATCH: "Ready for dispatch", READY_FOR_PICKUP: "Ready for pickup",
   ASSIGNED_FOR_DELIVERY: "Assigned for delivery", OUT_FOR_DELIVERY: "Out for delivery", DELIVERED: "Delivered",
   DELIVERY_FAILED: "Delivery attempt failed", RESCHEDULED: "Delivery rescheduled", RETURNING: "Returning to sender",
   RETURNED_TO_HUB: "Returned to hub", RETURNED_TO_SENDER: "Returned to sender", CANCELLED: "Shipment cancelled",
@@ -226,12 +248,34 @@ export async function transitionShipment(svc: ServiceCtx, shipmentId: string, to
   }
   if (opts.hubId) await assertOwned(svc.db, { hub: opts.hubId });
 
+  const hubPickup = s.deliveryMethod === "HUB_PICKUP";
+  if (hubPickup && ["READY_FOR_DISPATCH", "ASSIGNED_FOR_DELIVERY", "OUT_FOR_DELIVERY"].includes(to)) {
+    throw new AppError("INVALID_STATE", "This shipment is collected by the recipient at the pickup point, not delivered by a rider. Use “Ready for pickup”.");
+  }
+  if (!hubPickup && to === "READY_FOR_PICKUP") throw new AppError("INVALID_STATE", "Only shipments booked for hub pickup can be marked ready for pickup");
+  if (to === "READY_FOR_PICKUP") {
+    const here = opts.hubId ?? s.currentHubId;
+    if (!here) throw new AppError("VALIDATION", "Record which hub the shipment is at first (Arrived at hub)");
+    if (s.collectionHubId && here !== s.collectionHubId) {
+      const target = await svc.db.hub.findFirst({ where: { id: s.collectionHubId }, select: { name: true } });
+      throw new AppError("INVALID_STATE", `The recipient will collect at ${target?.name ?? "the chosen pickup point"}. Move the shipment there (Arrived at hub) before marking it ready.`);
+    }
+  }
+
   const data: Prisma.ShipmentUncheckedUpdateInput = { status: to };
   const now = new Date();
   if (to === "PICKED_UP") data.pickedUpAt = now;
   if (to === "CANCELLED") data.cancelledAt = now;
   if (to === "AT_HUB" || to === "RETURNED_TO_HUB") { if (opts.hubId) data.currentHubId = opts.hubId; }
-  if (to === "AT_HUB" || to === "READY_FOR_DISPATCH" || to === "RETURNED_TO_HUB") { data.driverId = null; data.vehicleId = null; data.driverAccepted = false; }
+  if (to === "AT_HUB" || to === "READY_FOR_DISPATCH" || to === "READY_FOR_PICKUP" || to === "RETURNED_TO_HUB") { data.driverId = null; data.vehicleId = null; data.driverAccepted = false; }
+  let collectionCode: string | null = null;
+  if (to === "READY_FOR_PICKUP") {
+    collectionCode = generateOtp();
+    data.otpHash = hashOtp(s.id, collectionCode);
+    data.otpExpiresAt = new Date(Date.now() + (PICKUP_HOLD_DAYS + 7) * 86400_000);
+    data.readyForPickupAt = now;
+    if (opts.hubId) data.currentHubId = opts.hubId;
+  }
   if (to === "OUT_FOR_DELIVERY") {
     const reqs = (s.proofRequirements as ProofRequirements | null) ?? NO_PROOF;
     if (reqs.otp && !s.otpHash) {
@@ -263,6 +307,11 @@ export async function transitionShipment(svc: ServiceCtx, shipmentId: string, to
     await emitSafe(svc, { type: "shipment.returned", title: `Shipment ${s.trackingNumber} ${to === "RETURNED_TO_HUB" ? "returned to hub" : "returned to sender"}`, body: opts.note ?? "", entity: { type: "Shipment", id: s.id }, actionUrl: `/shipments/${s.id}`, branchId: s.branchId });
   }
   if (to === "OUT_FOR_DELIVERY") void sendCustomerMessage(svc, s, "shipment.out_for_delivery");
+  if (to === "READY_FOR_PICKUP" && collectionCode) {
+    const point = s.collectionHubId ? await svc.db.hub.findFirst({ where: { id: s.collectionHubId }, select: { name: true, addressLine: true, city: true } }) : null;
+    void sendCustomerMessage(svc, s, "shipment.ready_for_pickup", { otp: collectionCode, pickupPoint: point ? `${point.name}${point.addressLine ? `, ${point.addressLine}` : ""}${point.city ? `, ${point.city}` : ""}` : "the pickup point" });
+    await emitSafe(svc, { type: "shipment.ready_for_pickup", title: `Ready for pickup: ${s.trackingNumber}`, body: `${s.recipientName} can collect at ${point?.name ?? "the pickup point"}`, entity: { type: "Shipment", id: s.id }, actionUrl: `/shipments/${s.id}`, branchId: s.branchId });
+  }
   await syncDriverStatus(svc, s.driverId);
   return svc.db.shipment.findFirst({ where: { id: s.id } });
 }
@@ -302,6 +351,7 @@ export async function assignShipments(svc: ServiceCtx, shipmentIds: string[], dr
   for (const s of shipments) {
     const target = ASSIGNABLE[s.status];
     if (!target) { results.push({ id: s.id, ok: false, error: `Cannot assign a shipment that is ${s.status}` }); continue; }
+    if (s.deliveryMethod === "HUB_PICKUP" && target === "ASSIGNED_FOR_DELIVERY") { results.push({ id: s.id, ok: false, error: "Hub-pickup shipments are collected by the recipient — move it to the pickup point instead of assigning a rider" }); continue; }
     const res = await svc.db.shipment.updateMany({
       where: { id: s.id, status: s.status },
       data: { status: target, driverId: driver.id, vehicleId: vId ?? null, driverAccepted: false },
@@ -419,6 +469,69 @@ export async function completeDelivery(svc: ServiceCtx, shipmentId: string, proo
   return getShipmentOrThrow(svc, s.id);
 }
 
+/**
+ * Hand a shipment over to the recipient at the collection point. Requires the collection code the recipient was
+ * sent, unless a manager overrides it with a recorded reason (e.g. lost phone, ID verified in person).
+ * Cash due on collection is taken at the counter, so it goes straight to the company (no driver float).
+ */
+export async function collectShipment(
+  svc: ServiceCtx, shipmentId: string,
+  input: { code?: string; collectorName: string; idNote?: string; codCollected?: number; overrideReason?: string },
+  opts: { canOverride?: boolean } = {},
+) {
+  assertWritable(await getEntitlements(svc.companyId));
+  const s = await getShipmentOrThrow(svc, shipmentId);
+  if (s.status === "DELIVERED" && s.deliveryMethod === "HUB_PICKUP") return s; // idempotent
+  if (s.status !== "READY_FOR_PICKUP") throw new AppError("INVALID_STATE", "Only shipments that are ready for pickup can be handed over");
+  if (!input.collectorName.trim()) throw new AppError("VALIDATION", "Enter the name of the person collecting");
+
+  let overridden = false;
+  if (input.code) {
+    if (!s.otpHash || !s.otpExpiresAt || s.otpExpiresAt < new Date()) throw new AppError("VALIDATION", "The collection code has expired. Generate a new one.");
+    if (hashOtp(s.id, input.code) !== s.otpHash) {
+      await addEvent(svc, s.id, { type: "collection_code_failed", description: "Incorrect collection code entered", isPublic: false });
+      throw new AppError("VALIDATION", "Incorrect collection code");
+    }
+  } else if (input.overrideReason?.trim()) {
+    if (!opts.canOverride) throw new AppError("FORBIDDEN", "Only a manager can hand over without the collection code");
+    overridden = true;
+  } else {
+    throw new AppError("VALIDATION", "Enter the collection code, or have a manager override with a reason");
+  }
+
+  const cod = num(s.codAmount);
+  if (cod > 0 && input.codCollected === undefined) throw new AppError("VALIDATION", "Enter the cash amount collected");
+  const collected = cod > 0 ? input.codCollected! : 0;
+
+  const claimed = await svc.db.shipment.updateMany({
+    where: { id: s.id, status: "READY_FOR_PICKUP" },
+    data: { status: "DELIVERED", deliveredAt: new Date(), otpHash: null, collectedByName: input.collectorName.trim() },
+  });
+  if (claimed.count === 0) return getShipmentOrThrow(svc, s.id);
+
+  await svc.db.proofOfDelivery.create({ data: { shipmentId: s.id, recipientName: input.collectorName.trim(), otpVerified: !overridden } as any }).catch((e: any) => { if (e?.code !== "P2002") throw e; });
+  const hub = s.collectionHubId ? await svc.db.hub.findFirst({ where: { id: s.collectionHubId }, select: { name: true } }) : null;
+  await addEvent(svc, s.id, {
+    status: "DELIVERED", type: "collected", hubId: s.collectionHubId,
+    description: `Collected by ${input.collectorName.trim()}${hub ? ` at ${hub.name}` : ""}`,
+    metadata: { codeVerified: !overridden, ...(input.idNote ? { idNote: input.idNote } : {}), ...(overridden ? { overrideReason: input.overrideReason } : {}) },
+  });
+  if (cod > 0) {
+    await ensureCod(svc, s);
+    const rec = await recordCodCollected(svc, s.id, null, collected);
+    if (rec?.status === "DISPUTED") {
+      await emitSafe(svc, { type: "cod.mismatch", title: `COD mismatch on ${s.trackingNumber}`, body: `Collected ${collected} but ${cod} was due.`, entity: { type: "Shipment", id: s.id }, actionUrl: `/cod`, branchId: s.branchId });
+    } else if (rec) {
+      // Cash taken at the counter is already with the company: record it as remitted.
+      await svc.db.codTransaction.update({ where: { id: rec.id }, data: { amountRemitted: collected, remittedAt: new Date() } });
+    }
+  }
+  await audit({ companyId: svc.companyId, actor: svc.actor, action: overridden ? "shipment.collected_override" : "shipment.collected", resourceType: "Shipment", resourceId: s.id, after: { collector: input.collectorName, codCollected: collected, ...(overridden ? { overrideReason: input.overrideReason } : {}) }, ip: svc.ip, userAgent: svc.userAgent });
+  await emitSafe(svc, { type: "shipment.delivered", title: `Collected: ${s.trackingNumber}`, body: `${input.collectorName}${hub ? ` at ${hub.name}` : ""}`, entity: { type: "Shipment", id: s.id }, actionUrl: `/shipments/${s.id}`, branchId: s.branchId });
+  void sendCustomerMessage(svc, s, "shipment.delivered");
+  return getShipmentOrThrow(svc, s.id);
+}
+
 export async function failDelivery(svc: ServiceCtx, shipmentId: string, input: FailureInput, opts: { driverId?: string | null } = {}) {
   assertWritable(await getEntitlements(svc.companyId));
   const s = await getShipmentOrThrow(svc, shipmentId);
@@ -494,7 +607,12 @@ export async function regenerateOtp(svc: ServiceCtx, shipmentId: string) {
   if (!ACTIVE_STATUSES.includes(s.status)) throw new AppError("INVALID_STATE", "Shipment is closed");
   const otp = generateOtp();
   await svc.db.shipment.update({ where: { id: s.id }, data: { otpHash: hashOtp(s.id, otp), otpExpiresAt: new Date(Date.now() + 24 * 3600_000) } });
-  const sent = await sendCustomerMessage(svc, s, "shipment.otp", { otp });
+  const sent = s.status === "READY_FOR_PICKUP"
+    ? await (async () => {
+        const point = s.collectionHubId ? await svc.db.hub.findFirst({ where: { id: s.collectionHubId }, select: { name: true, addressLine: true, city: true } }) : null;
+        return sendCustomerMessage(svc, s, "shipment.ready_for_pickup", { otp, pickupPoint: point ? `${point.name}${point.addressLine ? `, ${point.addressLine}` : ""}${point.city ? `, ${point.city}` : ""}` : "the pickup point" });
+      })()
+    : await sendCustomerMessage(svc, s, "shipment.otp", { otp });
   await audit({ companyId: svc.companyId, actor: svc.actor, action: "shipment.otp_regenerated", resourceType: "Shipment", resourceId: s.id, ip: svc.ip });
   return { otp, sentToRecipient: sent };
 }
@@ -566,6 +684,7 @@ export async function getShipmentDetail(svc: ServiceCtx, id: string) {
       vehicle: { select: { id: true, registrationNumber: true, type: true } },
       branch: { select: { id: true, name: true } },
       currentHub: { select: { id: true, name: true } },
+      collectionHub: { select: { id: true, name: true, openingHours: true } },
       customer: { select: { id: true, name: true, phone: true } },
       events: { orderBy: { createdAt: "asc" } },
       attempts: { orderBy: { createdAt: "asc" }, include: { driver: { select: { name: true } } } },
@@ -585,6 +704,7 @@ export async function getPublicTracking(trackingNumber: string) {
     select: {
       id: true, trackingNumber: true, status: true, pickupCity: true, pickupState: true, deliveryCity: true, deliveryState: true,
       expectedDeliveryAt: true, deliveredAt: true, packageType: true, priority: true, driverId: true,
+      deliveryMethod: true, readyForPickupAt: true, collectionHub: { select: { name: true, addressLine: true, city: true, state: true, openingHours: true } },
       driver: { select: { name: true, kind: true } },
       proof: { select: { recipientName: true, capturedAt: true, photoUrl: true, signatureData: true } },
       events: { where: { isPublic: true }, orderBy: { createdAt: "asc" }, select: { description: true, status: true, createdAt: true } },
@@ -599,6 +719,8 @@ export async function getPublicTracking(trackingNumber: string) {
     trackingNumber: s.trackingNumber, status: s.status,
     origin: `${s.pickupCity}, ${s.pickupState}`, destination: `${s.deliveryCity}, ${s.deliveryState}`,
     expectedDeliveryAt: s.expectedDeliveryAt, deliveredAt: s.deliveredAt, priority: s.priority, packageType: s.packageType,
+    deliveryMethod: s.deliveryMethod,
+    pickupPoint: s.deliveryMethod === "HUB_PICKUP" && s.collectionHub ? { name: s.collectionHub.name, address: [s.collectionHub.addressLine, s.collectionHub.city, s.collectionHub.state].filter(Boolean).join(", "), openingHours: s.collectionHub.openingHours, readySince: s.readyForPickupAt } : null,
     driver: showDriver ? { firstName: s.driver!.name.split(" ")[0], kind: s.driver!.kind } : null,
     proof: delivered && s.proof ? { recipientName: s.proof.recipientName, at: s.proof.capturedAt, hasPhoto: !!s.proof.photoUrl, hasSignature: !!s.proof.signatureData } : null,
     timeline: s.events,

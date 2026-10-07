@@ -110,6 +110,7 @@ export async function getDashboard(svc: ServiceCtx, tz: string) {
       pickedUp: n("PICKED_UP"),
       atHub: n("AT_HUB", "SORTING"),
       readyForDispatch: n("READY_FOR_DISPATCH", "ASSIGNED_FOR_DELIVERY"),
+      readyForPickup: n("READY_FOR_PICKUP"),
       outForDelivery: n("OUT_FOR_DELIVERY"),
       deliveredToday,
       failedToday,

@@ -95,6 +95,10 @@ Billing (`billing.ts`, Paystack): checkout creates a PENDING `BillingPayment` wi
 * Routes: multi-stop delivery runs keep the dispatcher's order; an optional **nearest-neighbour heuristic** is clearly labelled as a heuristic, distances are straight-line estimates, and `getRouteOptimizer()` is the integration point for a real engine. No optimisation is claimed.
 * Pricing: company-authored rules (zone→zone, weight bands, priority multiplier, interstate, customer type, corporate discount, COD fee, insurance, minimum). No matching rule ⇒ no price (public booking/API refuse rather than guess).
 
+### Hub / pickup-point collection
+
+A shipment can be booked as `HUB_PICKUP` instead of home delivery: the recipient collects at a hub or service centre that has *Customers can collect shipments here* enabled (Hubs & branches). Flow: confirm → rider collects from the sender → *Arrived at hub* (at the chosen collection point) → **Ready for pickup** (the recipient is sent a 6-digit collection code by SMS/email) → staff use **Hand over to recipient** with the code, the collector's name and the cash due (COD is taken at the counter and recorded as already remitted). Managers can override a missing code with a recorded reason. Hub-pickup shipments can't be assigned to a rider for delivery, uncollected ones surface after 7 days, and the public tracking page shows the collection point, hours and a pickup-specific progress bar.
+
 ### Driver / rider app & offline
 
 `/driver` is a mobile-first part of the same app (same login, same APIs). Status changes, proof of delivery (photo, signature, OTP, recipient name, GPS, COD amount) and failed deliveries go through an **IndexedDB outbox**: persist first, send, retry on reconnect, with a visible sync state. Every item carries a `clientEventId` which the server treats as an idempotency key, so duplicates are impossible. Required proof methods are configurable per company, with a stricter profile for high-value shipments. See [docs/MOBILE.md](docs/MOBILE.md).

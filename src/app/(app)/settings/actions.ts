@@ -82,7 +82,7 @@ export const updateChannelsAction = defineAction({
 
 export const upsertTemplateAction = defineAction({
   permissions: ["notifications.manage"],
-  schema: z.object({ event: z.enum(["shipment.created", "shipment.out_for_delivery", "shipment.delivered", "shipment.delivery_failed", "shipment.otp"]), channel: z.enum(["SMS", "WHATSAPP", "EMAIL"]), subject: opt(z.string().max(120)), body: z.string().trim().min(5).max(600) }),
+  schema: z.object({ event: z.enum(["shipment.created", "shipment.out_for_delivery", "shipment.delivered", "shipment.delivery_failed", "shipment.otp", "shipment.ready_for_pickup"]), channel: z.enum(["SMS", "WHATSAPP", "EMAIL"]), subject: opt(z.string().max(120)), body: z.string().trim().min(5).max(600) }),
   handler: async (ctx, i) => { await ctx.db.messageTemplate.upsert({ where: { companyId_event_channel: { companyId: ctx.companyId, event: i.event, channel: i.channel } }, create: { ...i } as any, update: { subject: i.subject, body: i.body } }); await auditFrom(ctx, "template.updated", "MessageTemplate", null, undefined, i); return true; },
 });
 

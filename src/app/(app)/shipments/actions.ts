@@ -4,7 +4,7 @@ import { defineAction } from "@/lib/platform/action";
 import { AppError } from "@/lib/platform/errors";
 import { assertOwned } from "@/lib/platform/db";
 import {
-  assignShipments, createShipment, quoteForInput, regenerateOtp, resolveFailure, transitionShipment, unassignShipment,
+  assignShipments, collectShipment, createShipment, resolveDestination, quoteForInput, regenerateOtp, resolveFailure, transitionShipment, unassignShipment,
 } from "@/lib/logistics/shipments";
 import { shipmentInputSchema } from "@/lib/logistics/schemas";
 import { ALL_STATUSES } from "@/lib/logistics/shipment-status";
@@ -22,10 +22,11 @@ export const createShipmentAction = defineAction({
 
 export const quoteAction = defineAction({
   permissions: ["shipments.create"],
-  schema: shipmentInputSchema.pick({ pickupCity: true, pickupState: true, deliveryCity: true, deliveryState: true, weightKg: true, priority: true, packageType: true, declaredValue: true, codAmount: true, customerId: true }),
+  schema: shipmentInputSchema.pick({ pickupCity: true, pickupState: true, deliveryCity: true, deliveryState: true, deliveryMethod: true, collectionHubId: true, weightKg: true, priority: true, packageType: true, declaredValue: true, codAmount: true, customerId: true }),
   handler: async (ctx, input) => {
     await assertOwned(ctx.db, { customer: input.customerId });
-    return (await quoteForInput(ctx, input)).quote;
+    const dest = await resolveDestination(ctx, input);
+    return (await quoteForInput(ctx, { ...input, deliveryCity: dest.city, deliveryState: dest.state })).quote;
   },
 });
 
@@ -65,4 +66,10 @@ export const regenerateOtpAction = defineAction({
   permissions: ["shipments.edit"],
   schema: z.object({ id: z.string() }),
   handler: async (ctx, i) => regenerateOtp(ctx, i.id),
+});
+
+export const collectShipmentAction = defineAction({
+  permissions: ["shipments.edit"],
+  schema: z.object({ id: z.string(), collectorName: z.string().trim().min(2).max(120), code: z.string().regex(/^\d{6}$/, "The code is 6 digits").optional(), idNote: z.string().max(120).optional(), codCollected: z.coerce.number().min(0).optional(), overrideReason: z.string().trim().max(300).optional() }),
+  handler: async (ctx, { id, ...i }) => { await collectShipment(ctx, id, i, { canOverride: ctx.can("shipments.cancel") }); return true; },
 });

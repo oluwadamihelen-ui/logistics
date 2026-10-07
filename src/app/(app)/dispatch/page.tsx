@@ -15,7 +15,8 @@ export default async function DispatchPage() {
   const today = startOfDayInTz(company.timezone);
   const [ships, drivers, active, zones] = await Promise.all([
     ctx.db.shipment.findMany({
-      where: { OR: [{ status: { in: ["CONFIRMED", "PICKUP_ASSIGNED", "PICKED_UP", "READY_FOR_DISPATCH", "ASSIGNED_FOR_DELIVERY", "OUT_FOR_DELIVERY", "DELIVERY_FAILED", "RESCHEDULED"] } }, { status: "DELIVERED", deliveredAt: { gte: today } }] },
+      // Hub-pickup shipments only need a rider for the sender pickup; once picked up they go to the hub, not to dispatch.
+      where: { AND: [{ OR: [{ status: { in: ["CONFIRMED", "PICKUP_ASSIGNED", "PICKED_UP", "READY_FOR_DISPATCH", "ASSIGNED_FOR_DELIVERY", "OUT_FOR_DELIVERY", "DELIVERY_FAILED", "RESCHEDULED"] } }, { status: "DELIVERED", deliveredAt: { gte: today } }] }, { NOT: { deliveryMethod: "HUB_PICKUP", status: "PICKED_UP" } }] },
       orderBy: { createdAt: "asc" }, take: 400,
       select: { id: true, trackingNumber: true, status: true, priority: true, recipientName: true, deliveryCity: true, deliveryAddress: true, driverId: true, driverAccepted: true, codAmount: true, deliveryZoneId: true },
     }),

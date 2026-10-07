@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
 import { ActionButton, Field, ModalForm, SelectField, Modal } from "./form";
-import { assignAction, regenerateOtpAction, resolveFailureAction, transitionAction, unassignAction } from "@/app/(app)/shipments/actions";
+import { assignAction, collectShipmentAction, regenerateOtpAction, resolveFailureAction, transitionAction, unassignAction } from "@/app/(app)/shipments/actions";
 import { STATUS_LABEL } from "@/lib/logistics/shipment-status";
 import { useToast } from "./toast";
 
@@ -16,26 +16,33 @@ interface Props {
   drivers: { id: string; name: string; status: string; vehicle: string | null }[];
   hubs: { id: string; name: string }[];
   otpRequired: boolean;
+  hubPickup: boolean;
+  collectionPoint: string | null;
+  codDue: number;
+  canOverrideCollection: boolean;
 }
 
 const VERB: Record<string, string> = {
-  CONFIRMED: "Confirm", PICKED_UP: "Mark picked up", AT_HUB: "Arrived at hub", SORTING: "Start sorting", READY_FOR_DISPATCH: "Ready for dispatch",
+  CONFIRMED: "Confirm", PICKED_UP: "Mark picked up", AT_HUB: "Arrived at hub", SORTING: "Start sorting", READY_FOR_DISPATCH: "Ready for dispatch", READY_FOR_PICKUP: "Ready for pickup",
   OUT_FOR_DELIVERY: "Start delivery", RETURNING: "Start return", RETURNED_TO_HUB: "Returned to hub", RETURNED_TO_SENDER: "Returned to sender",
   CANCELLED: "Cancel shipment", RESCHEDULED: "Reschedule", PICKUP_ASSIGNED: "", ASSIGNED_FOR_DELIVERY: "",
 };
 
-export function ShipmentActions({ id, status, hasDriver, allowed, canAssign, canDispatch, canEdit, drivers, hubs, otpRequired }: Props) {
+export function ShipmentActions({ id, status, hasDriver, allowed, canAssign, canDispatch, canEdit, drivers, hubs, otpRequired, hubPickup, collectionPoint, codDue, canOverrideCollection }: Props) {
   const toast = useToast();
   const [otp, setOtp] = React.useState<string | null>(null);
-  const assignable = ["CONFIRMED", "PICKUP_ASSIGNED", "PICKED_UP", "READY_FOR_DISPATCH", "ASSIGNED_FOR_DELIVERY", "RESCHEDULED", "DELIVERY_FAILED"].includes(status);
+  const assignable = (hubPickup ? ["CONFIRMED", "PICKUP_ASSIGNED"] : ["CONFIRMED", "PICKUP_ASSIGNED", "PICKED_UP", "READY_FOR_DISPATCH", "ASSIGNED_FOR_DELIVERY", "RESCHEDULED", "DELIVERY_FAILED"]).includes(status);
   const failed = ["DELIVERY_FAILED", "RESCHEDULED"].includes(status);
-  const steps = allowed.filter((a) => a.perm && VERB[a.to] && a.to !== "CANCELLED" && a.to !== "RESCHEDULED");
+  const steps = allowed.filter((a) => a.perm && VERB[a.to] && a.to !== "CANCELLED" && a.to !== "RESCHEDULED"
+    && (hubPickup ? a.to !== "READY_FOR_DISPATCH" && a.to !== "OUT_FOR_DELIVERY" : a.to !== "READY_FOR_PICKUP"));
   const canCancel = allowed.some((a) => a.to === "CANCELLED" && a.perm);
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
-        {steps.map((a) => a.to === "AT_HUB" ? (
+        {steps.map((a) => a.to === "READY_FOR_PICKUP" ? (
+          <ActionButton key={a.to} label="Ready for pickup" action={() => transitionAction({ id, to: "READY_FOR_PICKUP" as any })} successMessage="Marked ready — collection code sent to the recipient" />
+        ) : a.to === "AT_HUB" ? (
           <ModalForm key={a.to} trigger="Arrived at hub" triggerClassName="btn-primary" title="Record hub arrival" action={transitionAction} extra={{ id, to: "AT_HUB" }} successMessage="Hub arrival recorded">
             <SelectField name="hubId" label="Hub" required options={hubs.map((h) => ({ value: h.id, label: h.name }))} placeholder="Select hub" />
             <Field name="note" label="Note (optional)" />
@@ -43,6 +50,16 @@ export function ShipmentActions({ id, status, hasDriver, allowed, canAssign, can
         ) : (
           <ActionButton key={a.to} variant={a.to === "RETURNING" ? "secondary" : "primary"} label={VERB[a.to]} action={() => transitionAction({ id, to: a.to as any })} successMessage={`${STATUS_LABEL[a.to as keyof typeof STATUS_LABEL]}`} />
         ))}
+        {status === "READY_FOR_PICKUP" && canEdit && (
+          <ModalForm trigger="Hand over to recipient" triggerClassName="btn-primary" title="Hand over at collection point" action={collectShipmentAction} extra={{ id }} successMessage="Handed over">
+            <p className="text-sm text-slate-600">Check the collector&apos;s ID, then enter the 6-digit collection code the recipient received{collectionPoint ? ` for ${collectionPoint}` : ""}.</p>
+            <Field name="collectorName" label="Collector's name" required />
+            <Field name="code" label="Collection code" inputMode="numeric" maxLength={6} placeholder="6 digits" />
+            <Field name="idNote" label="ID checked (optional)" hint="e.g. NIN ending 1234, driver's licence" />
+            {codDue > 0 && <Field name="codCollected" label="Cash collected at counter" type="number" min="0" step="0.01" required defaultValue={String(codDue)} hint={`Amount due: ${codDue.toLocaleString()}`} />}
+            {canOverrideCollection && <Field name="overrideReason" label="Manager override (only if no code)" hint="Leave the code empty and explain why, e.g. phone lost, ID verified. Recorded in the audit log." />}
+          </ModalForm>
+        )}
         {canAssign && assignable && (
           <ModalForm trigger={hasDriver ? "Reassign driver" : "Assign driver"} triggerClassName="btn-secondary" title="Assign driver / rider" action={assignAction} extra={{ shipmentIds: [id] }} successMessage="Assigned">
             <SelectField name="driverId" label="Driver / rider" required placeholder="Select…" options={drivers.map((d) => ({ value: d.id, label: `${d.name} · ${d.status.replace(/_/g, " ").toLowerCase()}${d.vehicle ? ` · ${d.vehicle}` : ""}` }))} />
@@ -52,8 +69,8 @@ export function ShipmentActions({ id, status, hasDriver, allowed, canAssign, can
         {canAssign && hasDriver && ["PICKUP_ASSIGNED", "ASSIGNED_FOR_DELIVERY"].includes(status) && (
           <ActionButton variant="ghost" label="Unassign" confirm="Remove the driver from this shipment?" action={() => unassignAction({ id })} successMessage="Unassigned" />
         )}
-        {canEdit && otpRequired && (
-          <ActionButton variant="ghost" label="Resend / show OTP" confirm="Generate a new delivery OTP? The previous one stops working." action={async () => { const r = await regenerateOtpAction({ id }); if (r.ok) setOtp(r.data.otp); return r; }} successMessage="New OTP generated" />
+        {canEdit && (otpRequired || status === "READY_FOR_PICKUP") && (
+          <ActionButton variant="ghost" label={status === "READY_FOR_PICKUP" ? "Resend collection code" : "Resend / show OTP"} confirm="Generate a new code? The previous one stops working." action={async () => { const r = await regenerateOtpAction({ id }); if (r.ok) setOtp(r.data.otp); return r; }} successMessage="New OTP generated" />
         )}
         {canCancel && <ActionButton variant="danger" label="Cancel" confirm="Cancel this shipment? This can't be undone." action={() => transitionAction({ id, to: "CANCELLED" })} successMessage="Shipment cancelled" />}
       </div>

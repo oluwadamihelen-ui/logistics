@@ -42,13 +42,13 @@ export default async function ShipmentDetail({ params }: { params: Promise<{ id:
           <Card>
             <CardHeader title="Actions" subtitle="Moves are validated against the shipment lifecycle." />
             <div className="p-5">
-              <ShipmentActions id={s.id} status={s.status} hasDriver={!!s.driverId} allowed={allowed} canAssign={ctx.can("shipments.assign")} canDispatch={ctx.can("shipments.dispatch")} canEdit={ctx.can("shipments.edit")} drivers={drivers.map((d) => ({ id: d.id, name: d.name, status: d.status, vehicle: d.vehicle?.registrationNumber ?? null }))} hubs={hubs} otpRequired={!!req.otp} />
+              <ShipmentActions id={s.id} status={s.status} hasDriver={!!s.driverId} allowed={allowed} canAssign={ctx.can("shipments.assign")} canDispatch={ctx.can("shipments.dispatch")} canEdit={ctx.can("shipments.edit")} drivers={drivers.map((d) => ({ id: d.id, name: d.name, status: d.status, vehicle: d.vehicle?.registrationNumber ?? null }))} hubs={hubs} otpRequired={!!req.otp} hubPickup={s.deliveryMethod === "HUB_PICKUP"} collectionPoint={s.collectionHub?.name ?? null} codDue={Number(s.codAmount)} canOverrideCollection={ctx.can("shipments.cancel")} />
               {allowed.every((a) => !a.perm) && !["DELIVERED", "CANCELLED", "RETURNED_TO_SENDER"].includes(s.status) && <p className="text-sm text-slate-500">Delivery completion and failure are recorded by the assigned driver in the driver app.</p>}
             </div>
           </Card>
           <div className="grid gap-4 md:grid-cols-2">
             <Card><CardHeader title="Sender / pickup" /><div className="space-y-1 p-5 text-sm"><p className="font-medium">{s.senderName}</p><p>{s.senderPhone}</p><p className="text-slate-600">{s.pickupAddress}, {s.pickupCity}, {s.pickupState}</p></div></Card>
-            <Card><CardHeader title="Recipient / delivery" /><div className="space-y-1 p-5 text-sm"><p className="font-medium">{s.recipientName}</p><p>{s.recipientPhone}</p><p className="text-slate-600">{s.deliveryAddress}, {s.deliveryCity}, {s.deliveryState}</p>{s.specialInstructions && <p className="mt-2 rounded bg-amber-50 p-2 text-amber-900">⚑ {s.specialInstructions}</p>}</div></Card>
+            <Card><CardHeader title={s.deliveryMethod === "HUB_PICKUP" ? "Recipient / collection point" : "Recipient / delivery"} action={s.deliveryMethod === "HUB_PICKUP" ? <Badge tone="warning">Hub pickup</Badge> : undefined} /><div className="space-y-1 p-5 text-sm"><p className="font-medium">{s.recipientName}</p><p>{s.recipientPhone}</p><p className="text-slate-600">{s.deliveryAddress}, {s.deliveryCity}, {s.deliveryState}</p>{s.deliveryMethod === "HUB_PICKUP" && s.collectionHub?.openingHours && <p className="text-xs text-slate-500">Open: {s.collectionHub.openingHours}</p>}{s.collectedByName && <p className="text-emerald-700">Collected by {s.collectedByName}</p>}{s.specialInstructions && <p className="mt-2 rounded bg-amber-50 p-2 text-amber-900">⚑ {s.specialInstructions}</p>}</div></Card>
           </div>
           <Card>
             <CardHeader title="Package" />

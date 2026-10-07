@@ -26,6 +26,8 @@ curl -X POST https://app.example.com/api/v1/shipments \
        "packageDescription":"Dress","weightKg":1.5,"codAmount":18000}'
 ```
 
+For collection at a hub / pickup point, send `"deliveryMethod":"HUB_PICKUP"` and `"collectionHubId":"<hub id>"` instead of the delivery address fields (the hub must have customer collection enabled).
+
 ## Webhooks
 
 Add an HTTPS endpoint (public address only) in Settings. Event `shipment.status_changed`:
