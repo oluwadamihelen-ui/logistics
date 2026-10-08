@@ -67,7 +67,7 @@ export const authOptions: NextAuthOptions = {
           let ok = false, remaining: string[] | null = null;
           try { ok = verifyTotp(decryptSecret(user.totpSecret), code); } catch (e) {
           // Almost always: this deployment's TWO_FACTOR_KEY / NEXTAUTH_SECRET differs from the one used when 2FA was set up.
-          console.error("[auth] cannot decrypt the 2FA secret for user", user.id, "- check that TWO_FACTOR_KEY / NEXTAUTH_SECRET match across environments");
+          console.error("[auth] cannot decrypt the 2FA secret for user", user.id, "- check that TWO_FACTOR_KEY / NEXTAUTH_SECRET match across environments", e instanceof Error ? e.message : "");
           ok = false;
         }
           if (!ok) { remaining = consumeRecoveryCode(user.totpRecoveryHashes, code); ok = remaining !== null; }
