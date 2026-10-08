@@ -16,12 +16,12 @@ export function SiteHeader({ name, logo, dashHref }: { name: string; logo: strin
   }, []);
   return (
     <header className={`sticky top-0 z-40 border-b bg-white/90 backdrop-blur transition-shadow ${scrolled ? "border-line shadow-sm" : "border-transparent"}`}>
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-5">
-        <Link href="/" className="flex items-center" aria-label={name}><Image src={logo} alt={name} width={158} height={40} className="h-10 w-auto" unoptimized priority /></Link>
-        <nav className="ml-6 hidden items-center gap-6 text-sm font-medium text-slate-600 lg:flex" aria-label="Main">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-5 lg:grid lg:grid-cols-[1fr_auto_1fr]">
+        <Link href="/" className="flex items-center justify-self-start" aria-label={name}><Image src={logo} alt={name} width={158} height={40} className="h-10 w-auto" unoptimized priority /></Link>
+        <nav className="hidden items-center justify-center gap-8 text-sm font-medium text-slate-600 lg:flex" aria-label="Main">
           {LINKS.map(([l, h]) => <Link key={l} href={h} className="hover:text-ink">{l}</Link>)}
         </nav>
-        <div className="ml-auto hidden items-center gap-3 lg:flex">
+        <div className="ml-auto hidden items-center justify-end gap-3 lg:flex">
           {dashHref ? <Link href={dashHref} className="btn-primary">Open dashboard</Link> : <><Link href="/login" className="text-sm font-medium text-slate-700 hover:text-ink">Sign in</Link><Link href="/register" className="btn-primary">Start free trial</Link></>}
         </div>
         <button type="button" className="ml-auto rounded-lg p-2 text-slate-700 hover:bg-slate-100 lg:hidden" aria-label="Toggle menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
