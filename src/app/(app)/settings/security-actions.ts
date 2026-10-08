@@ -32,7 +32,9 @@ export async function confirmTwoFactorAction(raw: { code: string }) {
     const { code } = z.object({ code: z.string().min(6).max(8) }).parse(raw);
     const u = await prisma.user.findUniqueOrThrow({ where: { id: ctx.user.id } });
     if (u.totpEnabled || !u.totpSecret) throw new AppError("INVALID_STATE", "Start setup first.");
-    if (!verifyTotp(decryptSecret(u.totpSecret), code)) throw new AppError("VALIDATION", "That code isn't right. Check your authenticator app's clock and try again.");
+    let valid = false;
+    try { valid = verifyTotp(decryptSecret(u.totpSecret), code); } catch { throw new AppError("INVALID_STATE", "Couldn't read the pending setup secret. Start setup again."); }
+    if (!valid) throw new AppError("VALIDATION", "That code isn't right. Check your authenticator app's clock and try again.");
     const { codes, hashes } = generateRecoveryCodes();
     await prisma.user.update({ where: { id: u.id }, data: { totpEnabled: true, totpRecoveryHashes: hashes } });
     await auditFrom(ctx, "auth.2fa_enabled", "User", u.id);
@@ -47,8 +49,15 @@ export async function disableTwoFactorAction(raw: { password: string; code: stri
     const u = await prisma.user.findUniqueOrThrow({ where: { id: ctx.user.id } });
     if (!u.totpEnabled || !u.totpSecret) throw new AppError("INVALID_STATE", "Two-factor authentication is off.");
     if (!(await bcrypt.compare(i.password, u.passwordHash))) throw new AppError("VALIDATION", "Password is incorrect.");
-    const ok = verifyTotp(decryptSecret(u.totpSecret), i.code) || consumeRecoveryCode(u.totpRecoveryHashes, i.code) !== null;
-    if (!ok) throw new AppError("VALIDATION", "That code isn't right.");
+    // A recovery code must work even if the stored secret can't be decrypted (e.g. the server's encryption key changed).
+    let totpOk = false, undecryptable = false;
+    try { totpOk = verifyTotp(decryptSecret(u.totpSecret), i.code); } catch { undecryptable = true; }
+    const ok = totpOk || consumeRecoveryCode(u.totpRecoveryHashes, i.code) !== null;
+    if (!ok) {
+      throw new AppError("VALIDATION", undecryptable
+        ? "Authenticator codes can't be checked on this server (its encryption key differs from the one used when 2FA was set up). Use one of your recovery codes instead."
+        : "That code isn't right.");
+    }
     await prisma.user.update({ where: { id: u.id }, data: { totpEnabled: false, totpSecret: null, totpRecoveryHashes: [] } });
     await auditFrom(ctx, "auth.2fa_disabled", "User", u.id);
     return true;
