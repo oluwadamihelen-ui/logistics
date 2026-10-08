@@ -25,7 +25,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  if (url.pathname.startsWith("/_next/static/") || url.pathname === "/icon.svg" || url.pathname === "/manifest.webmanifest") {
+  if (url.pathname.startsWith("/_next/static/") || url.pathname === "/icon-192.png" || url.pathname === "/manifest.webmanifest") {
     event.respondWith((async () => {
       const cache = await caches.open(STATIC);
       const hit = await cache.match(req);

@@ -3,10 +3,15 @@
  * (or override with NEXT_PUBLIC_* env vars) and the whole app re-brands.
  */
 export const brand = {
-  APP_NAME: process.env.NEXT_PUBLIC_APP_NAME ?? "RouteWise",
-  APP_TAGLINE: process.env.NEXT_PUBLIC_APP_TAGLINE ?? "The operating system for delivery & logistics",
-  APP_LOGO: process.env.NEXT_PUBLIC_APP_LOGO ?? "/logo.svg",
-  APP_ICON: process.env.NEXT_PUBLIC_APP_ICON ?? "/icon.svg",
+  APP_NAME: process.env.NEXT_PUBLIC_APP_NAME ?? "LogisticOS",
+  APP_TAGLINE: process.env.NEXT_PUBLIC_APP_TAGLINE ?? "The Logistics Operating System",
+  /** Square app mark on a white tile — works on both light and dark backgrounds. */
+  APP_LOGO: process.env.NEXT_PUBLIC_APP_LOGO ?? "/logo-tile.png",
+  /** Horizontal logo (mark + wordmark) for light backgrounds. */
+  APP_WORDMARK: process.env.NEXT_PUBLIC_APP_WORDMARK ?? "/logo-wordmark.png",
+  /** Full logo with tagline for light backgrounds (documents, emails). */
+  APP_LOGO_FULL: process.env.NEXT_PUBLIC_APP_LOGO_FULL ?? "/logo-full.png",
+  APP_ICON: process.env.NEXT_PUBLIC_APP_ICON ?? "/favicon.ico",
   /** RGB triplets (no commas) so Tailwind can apply alpha. */
   PRIMARY_COLOR: process.env.NEXT_PUBLIC_PRIMARY_COLOR ?? "15 98 254",
   PRIMARY_COLOR_DARK: process.env.NEXT_PUBLIC_PRIMARY_COLOR_DARK ?? "10 62 178",

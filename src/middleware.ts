@@ -22,4 +22,4 @@ export async function middleware(req: NextRequest) {
   return NextResponse.redirect(url);
 }
 
-export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|logo.svg|manifest.webmanifest|sw.js).*)"] };
+export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.png|icon-192.png|icon-512.png|apple-icon.png|logo-tile.png|logo-wordmark.png|logo-full.png|manifest.webmanifest|sw.js).*)"] };

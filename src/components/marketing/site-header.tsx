@@ -17,7 +17,7 @@ export function SiteHeader({ name, logo, dashHref }: { name: string; logo: strin
   return (
     <header className={`sticky top-0 z-40 border-b bg-white/90 backdrop-blur transition-shadow ${scrolled ? "border-line shadow-sm" : "border-transparent"}`}>
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-5">
-        <Link href="/" className="flex items-center gap-2 text-lg font-semibold"><Image src={logo} alt="" width={30} height={30} unoptimized />{name}</Link>
+        <Link href="/" className="flex items-center" aria-label={name}><Image src={logo} alt={name} width={158} height={40} className="h-10 w-auto" unoptimized priority /></Link>
         <nav className="ml-6 hidden items-center gap-6 text-sm font-medium text-slate-600 lg:flex" aria-label="Main">
           {LINKS.map(([l, h]) => <Link key={l} href={h} className="hover:text-ink">{l}</Link>)}
         </nav>

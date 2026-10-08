@@ -1,6 +1,6 @@
-# RouteWise — multi-tenant operating system for delivery & logistics companies
+# LogisticOS — multi-tenant operating system for delivery & logistics companies
 
-> "RouteWise" is a placeholder name. Everything brand-related lives in [`src/config/brand.ts`](src/config/brand.ts) (override with `NEXT_PUBLIC_*` env vars) — nothing else hard-codes it.
+> "LogisticOS" is the current brand name (logo files are in `public/`). Everything brand-related lives in [`src/config/brand.ts`](src/config/brand.ts) (override with `NEXT_PUBLIC_*` env vars) — nothing else hard-codes it.
 
 A production-oriented SaaS where many independent logistics companies (couriers, last-mile, dispatch, 3PL, food/pharmacy delivery, freight, own-fleet operators) run their operations on one platform: shipments → dispatch → drivers/riders → proof of delivery → COD → invoices → driver settlements, with a customer portal, public tracking/booking, an API, notifications, an AI assistant and subscription billing.
 

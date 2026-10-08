@@ -65,7 +65,7 @@ export default async function Landing() {
 
   return (
     <div className="min-h-screen bg-white text-ink">
-      <SiteHeader name={brand.APP_NAME} logo={brand.APP_LOGO} dashHref={dashHref} />
+      <SiteHeader name={brand.APP_NAME} logo={brand.APP_WORDMARK} dashHref={dashHref} />
 
       {/* Hero */}
       <section className="relative overflow-hidden bg-ink text-white">
