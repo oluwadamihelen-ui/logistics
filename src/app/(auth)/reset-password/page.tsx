@@ -1,4 +1,5 @@
 "use client";
+import { PasswordInput } from "@/components/client/form";
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -23,8 +24,8 @@ function Form() {
       <h1 className="text-2xl font-semibold">Choose a new password</h1>
       <form onSubmit={submit} className="mt-6 space-y-4">
         {err && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{err}</div>}
-        <div><label className="label" htmlFor="password">New password</label><input id="password" name="password" type="password" required minLength={10} className="input" autoComplete="new-password" /><p className="mt-1 text-xs text-slate-500">At least 10 characters, with letters and numbers.</p></div>
-        <div><label className="label" htmlFor="confirm">Confirm password</label><input id="confirm" name="confirm" type="password" required className="input" autoComplete="new-password" /></div>
+        <div><label className="label" htmlFor="password">New password</label><PasswordInput id="password" name="password" required minLength={10} autoComplete="new-password" /><p className="mt-1 text-xs text-slate-500">At least 10 characters, with letters and numbers.</p></div>
+        <div><label className="label" htmlFor="confirm">Confirm password</label><PasswordInput id="confirm" name="confirm" required autoComplete="new-password" /></div>
         <button className="btn-primary w-full" disabled={busy || !token}>{busy ? "Saving…" : "Update password"}</button>
       </form>
     </>

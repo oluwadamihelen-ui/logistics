@@ -1,4 +1,5 @@
 "use client";
+import { PasswordInput } from "@/components/client/form";
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
@@ -41,7 +42,7 @@ function LoginForm() {
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
         {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</div>}
         <div><label htmlFor="email" className="label">Email</label><input id="email" name="email" type="email" required autoComplete="email" className="input" readOnly={needTotp} /></div>
-        <div><label htmlFor="password" className="label">Password</label><input id="password" name="password" type="password" required autoComplete="current-password" className="input" readOnly={needTotp} /></div>
+        <div><label htmlFor="password" className="label">Password</label><PasswordInput id="password" name="password" required autoComplete="current-password" readOnly={needTotp} /></div>
         {needTotp && <div><label htmlFor="totp" className="label">Authentication code</label><input id="totp" name="totp" inputMode="numeric" autoComplete="one-time-code" autoFocus required className="input text-center font-mono text-lg tracking-widest" placeholder="123456" /><p className="mt-1 text-xs text-slate-500">From your authenticator app, or one of your recovery codes.</p></div>}
         <button className="btn-primary w-full" disabled={pending}>{pending ? "Signing in…" : needTotp ? "Verify and sign in" : "Sign in"}</button>
       </form>

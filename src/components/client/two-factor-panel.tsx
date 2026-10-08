@@ -1,4 +1,5 @@
 "use client";
+import { PasswordInput } from "./form";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { beginTwoFactorAction, confirmTwoFactorAction, disableTwoFactorAction } from "@/app/(app)/settings/security-actions";
@@ -36,7 +37,7 @@ export function TwoFactorPanel({ enabled, recoveryLeft }: { enabled: boolean; re
       <p className="text-sm text-emerald-700">✓ Two-factor authentication is on ({recoveryLeft} recovery code{recoveryLeft === 1 ? "" : "s"} left).</p>
       {err && <p role="alert" className="rounded bg-red-50 p-2 text-sm text-red-800">{err}</p>}
       <p className="text-xs text-slate-500">To turn it off, confirm your password and a current code.</p>
-      <div className="grid gap-3 sm:grid-cols-2"><div><label className="label" htmlFor="pw2">Password</label><input id="pw2" name="password" type="password" required className="input" autoComplete="current-password" /></div><div><label className="label" htmlFor="cd2">Code</label><input id="cd2" name="code" required className="input font-mono" inputMode="numeric" autoComplete="one-time-code" /></div></div>
+      <div className="grid gap-3 sm:grid-cols-2"><div><label className="label" htmlFor="pw2">Password</label><PasswordInput id="pw2" name="password" required autoComplete="current-password" /></div><div><label className="label" htmlFor="cd2">Code</label><input id="cd2" name="code" required className="input font-mono" inputMode="numeric" autoComplete="one-time-code" /></div></div>
       <button className="btn-danger" disabled={busy}>Turn off two-factor</button>
     </form>
   );

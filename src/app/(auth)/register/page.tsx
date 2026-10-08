@@ -33,7 +33,10 @@ function RegisterForm() {
             <Field name="phone" label="Phone" type="tel" autoComplete="tel" />
           </FieldGrid>
           <Field name="email" label="Work email" type="email" required autoComplete="email" />
-          <Field name="password" label="Password" type="password" required minLength={10} autoComplete="new-password" hint="At least 10 characters, with letters and numbers." />
+          <FieldGrid>
+            <Field name="password" label="Password" type="password" required minLength={10} autoComplete="new-password" hint="At least 10 characters, with letters and numbers." />
+            <Field name="confirmPassword" label="Confirm password" type="password" required minLength={10} autoComplete="new-password" />
+          </FieldGrid>
         </Form>
       </div>
       <p className="mt-6 text-center text-sm text-slate-500">Already have an account? <Link className="font-medium text-brand" href="/login">Sign in</Link></p>

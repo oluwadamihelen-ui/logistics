@@ -1,4 +1,5 @@
 "use client";
+import { PasswordInput } from "./form";
 import * as React from "react";
 import { signOut } from "next-auth/react";
 import { useToast } from "./toast";
@@ -18,9 +19,9 @@ export function ChangePassword({ action }: { action: (i: { current: string; next
   return (
     <form onSubmit={submit} className="space-y-3">
       {err && <p role="alert" className="rounded bg-red-50 p-2 text-sm text-red-800">{err}</p>}
-      <div><label className="label" htmlFor="current">Current password</label><input id="current" name="current" type="password" required className="input" autoComplete="current-password" /></div>
-      <div><label className="label" htmlFor="next">New password</label><input id="next" name="next" type="password" required minLength={10} className="input" autoComplete="new-password" /></div>
-      <div><label className="label" htmlFor="confirm">Confirm new password</label><input id="confirm" name="confirm" type="password" required className="input" autoComplete="new-password" /></div>
+      <div><label className="label" htmlFor="current">Current password</label><PasswordInput id="current" name="current" required autoComplete="current-password" /></div>
+      <div><label className="label" htmlFor="next">New password</label><PasswordInput id="next" name="next" required minLength={10} autoComplete="new-password" /></div>
+      <div><label className="label" htmlFor="confirm">Confirm new password</label><PasswordInput id="confirm" name="confirm" required autoComplete="new-password" /></div>
       <button className="btn-primary" disabled={busy}>{busy ? "Saving…" : "Change password"}</button>
     </form>
   );
