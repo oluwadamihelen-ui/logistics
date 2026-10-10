@@ -24,6 +24,7 @@ export default async function BookPage({ params }: { params: Promise<{ slug: str
         : !rules ? <NotConfigured title="Online pricing isn't set up" description="This company hasn't published a price list yet, so online booking is disabled. Please contact them directly." />
         : <BookingForm mode="public" honeypot currency={company.currency} quoteAction={publicQuoteAction} bookAction={publicBookAction} extra={{ slug }} customCities={await customCitiesByState(createTenantClient(company.id))} freeTextLocations={company.country !== "NG"} />}
       <p className="mt-8 text-center text-xs text-slate-400">Powered by {brand.APP_NAME}</p>
+      <p className="mt-10 text-center text-[11px] text-slate-400">Booking powered by <span className="font-medium">{brand.APP_NAME}</span>, a product of {brand.COMPANY_NAME}</p>
     </main>
   );
 }

@@ -14,4 +14,9 @@ export default async function setup() {
   if (!exists.rowCount) await admin.query(`CREATE DATABASE "${dbName}"`);
   await admin.end();
   execSync("npx prisma migrate deploy", { stdio: "pipe", env: { ...process.env, DATABASE_URL: url } });
+  // Rate-limit counters persist in the database, so start every run with a clean slate.
+  const t = new Client({ connectionString: url.split("?")[0] });
+  await t.connect();
+  await t.query('TRUNCATE "RateLimitBucket"');
+  await t.end();
 }

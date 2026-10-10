@@ -38,6 +38,7 @@ function RegisterForm() {
             <Field name="confirmPassword" label="Confirm password" type="password" required minLength={10} autoComplete="new-password" />
           </FieldGrid>
         </Form>
+        <p className="mt-3 text-center text-xs text-slate-500">By creating an account you agree to our <Link className="underline" href="/terms">Terms of Service</Link> and <Link className="underline" href="/privacy">Privacy Policy</Link>.</p>
       </div>
       <p className="mt-6 text-center text-sm text-slate-500">Already have an account? <Link className="font-medium text-brand" href="/login">Sign in</Link></p>
     </>

@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "./db";
 import { audit } from "./audit";
-import { enforceRateLimit, clientIp } from "./rate-limit";
+import { enforceSharedRateLimit, clientIp } from "./rate-limit";
 import { AppError } from "./errors";
 import { consumeRecoveryCode, decryptSecret, verifyTotp } from "./two-factor";
 
@@ -31,9 +31,9 @@ export const authOptions: NextAuthOptions = {
         const headers = new Headers((req?.headers ?? {}) as Record<string, string>);
         const ip = clientIp(headers);
         try {
-          enforceRateLimit(`login:ip:${ip}`, 30, 15 * 60_000);
+          await enforceSharedRateLimit(`login:ip:${ip}`, 30, 15 * 60_000);
           // The email limiter counts password attempts; a second-step submission (same password) shouldn't be double counted.
-          if (!parsed.data.totp) enforceRateLimit(`login:email:${email}`, 10, 15 * 60_000);
+          if (!parsed.data.totp) await enforceSharedRateLimit(`login:email:${email}`, 10, 15 * 60_000);
         } catch (e) {
           if (e instanceof AppError) throw new Error("RATE_LIMITED");
           throw e;
@@ -63,7 +63,7 @@ export const authOptions: NextAuthOptions = {
         if (user.totpEnabled && user.totpSecret) {
           const code = parsed.data.totp?.trim();
           if (!code) throw new Error("TOTP_REQUIRED");
-          enforceRateLimit(`login:totp:${user.id}`, 10, 15 * 60_000);
+          await enforceSharedRateLimit(`login:totp:${user.id}`, 10, 15 * 60_000);
           let ok = false, remaining: string[] | null = null;
           try { ok = verifyTotp(decryptSecret(user.totpSecret), code); } catch (e) {
           // Almost always: this deployment's TWO_FACTOR_KEY / NEXTAUTH_SECRET differs from the one used when 2FA was set up.

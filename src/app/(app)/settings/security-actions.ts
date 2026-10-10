@@ -6,7 +6,7 @@ import { requireTenant } from "@/lib/platform/context";
 import { prisma } from "@/lib/platform/db";
 import { AppError, toFailure, type ActionResult } from "@/lib/platform/errors";
 import { auditFrom } from "@/lib/platform/audit";
-import { enforceRateLimit } from "@/lib/platform/rate-limit";
+import { enforceSharedRateLimit } from "@/lib/platform/rate-limit";
 import { consumeRecoveryCode, decryptSecret, encryptSecret, generateRecoveryCodes, generateSecret, otpauthUrl, verifyTotp } from "@/lib/platform/two-factor";
 import { brand } from "@/config/brand";
 
@@ -16,7 +16,7 @@ async function run<T>(fn: (ctx: Awaited<ReturnType<typeof requireTenant>>) => Pr
 
 export async function beginTwoFactorAction() {
   return run(async (ctx) => {
-    enforceRateLimit(`2fa:begin:${ctx.user.id}`, 10, 60 * 60_000);
+    await enforceSharedRateLimit(`2fa:begin:${ctx.user.id}`, 10, 60 * 60_000);
     const u = await prisma.user.findUniqueOrThrow({ where: { id: ctx.user.id } });
     if (u.totpEnabled) throw new AppError("INVALID_STATE", "Two-factor authentication is already on.");
     const secret = generateSecret();
@@ -28,7 +28,7 @@ export async function beginTwoFactorAction() {
 
 export async function confirmTwoFactorAction(raw: { code: string }) {
   return run(async (ctx) => {
-    enforceRateLimit(`2fa:confirm:${ctx.user.id}`, 10, 15 * 60_000);
+    await enforceSharedRateLimit(`2fa:confirm:${ctx.user.id}`, 10, 15 * 60_000);
     const { code } = z.object({ code: z.string().min(6).max(8) }).parse(raw);
     const u = await prisma.user.findUniqueOrThrow({ where: { id: ctx.user.id } });
     if (u.totpEnabled || !u.totpSecret) throw new AppError("INVALID_STATE", "Start setup first.");
@@ -44,7 +44,7 @@ export async function confirmTwoFactorAction(raw: { code: string }) {
 
 export async function disableTwoFactorAction(raw: { password: string; code: string }) {
   return run(async (ctx) => {
-    enforceRateLimit(`2fa:disable:${ctx.user.id}`, 6, 15 * 60_000);
+    await enforceSharedRateLimit(`2fa:disable:${ctx.user.id}`, 6, 15 * 60_000);
     const i = z.object({ password: z.string().min(1).max(200), code: z.string().min(6).max(12) }).parse(raw);
     const u = await prisma.user.findUniqueOrThrow({ where: { id: ctx.user.id } });
     if (!u.totpEnabled || !u.totpSecret) throw new AppError("INVALID_STATE", "Two-factor authentication is off.");

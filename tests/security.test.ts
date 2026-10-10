@@ -121,3 +121,17 @@ describe("password reset by email", () => {
     process.env.EMAIL_PROVIDER_KEY = "re_test";
   });
 });
+
+describe("shared (database-backed) rate limiter", () => {
+  it("counts across calls in the database and rejects past the limit, then resets after the window", async () => {
+    const { enforceSharedRateLimit, purgeRateLimits } = await import("@/lib/platform/rate-limit");
+    const { prisma: db } = await import("@/lib/platform/db");
+    const key = `test:shared:${uniq()}`;
+    for (let i = 0; i < 3; i++) await enforceSharedRateLimit(key, 3, 60_000);
+    await expect(enforceSharedRateLimit(key, 3, 60_000)).rejects.toThrow(/Too many requests/);
+    expect((await db.$queryRaw<{ count: number }[]>`SELECT "count" FROM "RateLimitBucket" WHERE "key" = ${key}`)[0].count).toBe(4);
+    await db.$executeRaw`UPDATE "RateLimitBucket" SET "resetAt" = now() - interval '2 days' WHERE "key" = ${key}`;
+    expect(await purgeRateLimits()).toBeGreaterThanOrEqual(1);
+    await enforceSharedRateLimit(key, 3, 60_000); // fresh window
+  });
+});

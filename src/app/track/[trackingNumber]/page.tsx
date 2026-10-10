@@ -80,6 +80,7 @@ export default async function TrackPage({ params }: { params: Promise<{ tracking
           {t.company?.phone && <p className="mt-4 text-center text-xs text-slate-500">Questions? Contact {t.company.name}: {t.company.phone}</p>}
         </>
       )}
+      <p className="mt-8 text-center text-[11px] text-slate-400">Tracking powered by <span className="font-medium">{brand.APP_NAME}</span>, a product of {brand.COMPANY_NAME}</p>
     </main>
   );
 }

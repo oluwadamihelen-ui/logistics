@@ -7,6 +7,7 @@ import { signOut } from "next-auth/react";
 import { Icon } from "./icon";
 import { PushRegistrar, unregisterPush } from "./push-registrar";
 import { cn } from "@/lib/utils/format";
+import { brand } from "@/config/brand";
 
 export interface ShellNavGroup { label: string; items: { href: string; label: string; icon: string; locked?: boolean }[] }
 
@@ -78,6 +79,12 @@ export function AppShell({ brandName, logo, companyName, userName, roleLabel, na
       )}
       <PushRegistrar />
       <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">{children}</main>
+      <footer className="mx-auto max-w-[1400px] px-4 pb-8 pt-2 text-xs text-slate-400 sm:px-6">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-line pt-4">
+          <span>{brand.APP_NAME} is a product of <Link href="/about" className="font-medium text-slate-500 hover:underline">{brand.COMPANY_NAME}</Link></span>
+          <span className="ml-auto flex gap-4"><Link href="/terms" className="hover:underline">Terms</Link><Link href="/privacy" className="hover:underline">Privacy</Link><a href={`mailto:${brand.SUPPORT_EMAIL}`} className="hover:underline">Support</a></span>
+        </div>
+      </footer>
     </div>
   );
 }

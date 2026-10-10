@@ -12,7 +12,13 @@ function authorised(req: Request): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export async function POST(req: Request) {
+async function handle(req: Request) {
   if (!authorised(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   return NextResponse.json(await runMaintenance());
 }
+
+/** POST for any scheduler; GET because Vercel Cron issues GET requests (it sends `Authorization: Bearer $CRON_SECRET`). */
+export const POST = handle;
+export const GET = handle;
+
+export const maxDuration = 60;

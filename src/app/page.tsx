@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { currentUserOrNull } from "@/lib/platform/context";
 import { prisma } from "@/lib/platform/db";
+import { ensurePlans } from "@/lib/platform/provisioning";
 import { homeFor } from "@/lib/platform/home";
 import { brand } from "@/config/brand";
 import { SiteHeader } from "@/components/marketing/site-header";
@@ -57,7 +58,11 @@ export default async function Landing() {
     }
     dashHref = homeFor(user.role, onboarded);
   }
-  const rows = await prisma.subscriptionPlan.findMany({ where: { isActive: true, isPublic: true }, orderBy: { sortOrder: "asc" } }).catch(() => []);
+  const loadPlans = () => prisma.subscriptionPlan.findMany({ where: { isActive: true, isPublic: true }, orderBy: { sortOrder: "asc" } });
+  let rows = await loadPlans().catch(() => []);
+  if (!rows.length) { // fresh database: create the default plans once (idempotent) so pricing shows from day one
+    rows = await ensurePlans().then(loadPlans).catch(() => []);
+  }
   const plans: PricingPlan[] = rows.map((p) => ({ key: p.key, name: p.name, description: p.description, monthly: p.monthlyPriceKobo, annual: p.annualPriceKobo, currency: p.currency, limits: p.limits as Record<string, number | null>, features: p.features, popular: p.key === "professional" }));
   const cta = dashHref
     ? <Link href={dashHref} className="btn-primary !bg-accent !px-6 !py-3 text-base">Open dashboard</Link>
@@ -65,6 +70,10 @@ export default async function Landing() {
 
   return (
     <div className="min-h-screen bg-white text-ink">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        "@context": "https://schema.org", "@type": "SoftwareApplication", name: brand.APP_NAME, applicationCategory: "BusinessApplication", operatingSystem: "Web",
+        description: brand.APP_TAGLINE, publisher: { "@type": "Organization", name: brand.COMPANY_NAME, ...(brand.COMPANY_URL ? { url: brand.COMPANY_URL } : {}) },
+      }).replace(/</g, "\\u003c") }} />
       <SiteHeader name={brand.APP_NAME} logo={brand.APP_WORDMARK} dashHref={dashHref} />
 
       {/* Hero */}
@@ -152,6 +161,19 @@ export default async function Landing() {
         </div>
       </section>
 
+      {/* Built by */}
+      <section className="mx-auto max-w-7xl px-5 pb-20">
+        <div className="grid items-center gap-6 rounded-3xl border border-line bg-slate-50 p-8 md:grid-cols-[auto_1fr_auto] md:p-10">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-ink text-xl font-bold text-white" aria-hidden>N</div>
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wide text-brand">Built by {brand.COMPANY_NAME}</p>
+            <h2 className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">{brand.APP_NAME} is a product of {brand.COMPANY_NAME}</h2>
+            <p className="mt-2 max-w-2xl text-sm text-slate-600">{brand.COMPANY_NAME} designs, builds and supports {brand.APP_NAME}. The team that makes the product is the team that answers when you need help.</p>
+          </div>
+          <Link href="/about" className="btn-secondary">About {brand.COMPANY_NAME}</Link>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="px-5 pb-20">
         <div className="mx-auto max-w-5xl rounded-3xl bg-ink px-8 py-14 text-center text-white">
@@ -164,7 +186,7 @@ export default async function Landing() {
         </div>
       </section>
 
-      <SiteFooter name={brand.APP_NAME} tagline={brand.APP_TAGLINE} logo={brand.APP_LOGO} email={brand.SUPPORT_EMAIL} />
+      <SiteFooter />
     </div>
   );
 }

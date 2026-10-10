@@ -124,6 +124,10 @@ See [`.env.example`](.env.example) — every variable with a safe placeholder. R
 
 `npm test` creates/migrates an isolated `logistics_test` database (override with `TEST_DATABASE_URL`). 119 tests cover: RBAC matrix, shipment state machine, pricing, entitlements, tenant isolation (data layer, FK injection, services, audit immutability at DB level), shipment lifecycle/proof/failed-delivery/COD/idempotency, finance & settlements, billing + signed/idempotent webhooks, AI permission/tenant/confirmation enforcement, public API auth/scopes/idempotency, portal isolation, public booking.
 
+## Going live
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the Vercel + Neon launch checklist (environment variables, migrations, cron, first admin, smoke tests).
+
 ## Honest limitations / not implemented yet
 
 * **Push notifications** (FCM) are implemented server-side and in the Capacitor shell, but were **not exercised against real Firebase or on a device** here (the FCM exchange is covered by tests with a mocked HTTP layer). iOS needs an APNs key uploaded to Firebase.

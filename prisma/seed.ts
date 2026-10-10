@@ -8,6 +8,10 @@ import { computeQuote } from "../src/lib/logistics/pricing";
 import { loadPricingRules, createShipment, transitionShipment, assignShipments } from "../src/lib/logistics/shipments";
 import { emit } from "../src/lib/platform/notifications/engine";
 
+if (process.env.NODE_ENV === "production" && process.env.ALLOW_PRODUCTION_SEED !== "1") {
+  console.error("Refusing to seed demo data in production (it creates accounts with a known password). Use `npm run admin:create` instead.");
+  process.exit(1);
+}
 const PASSWORD = process.env.SEED_PASSWORD ?? "SwiftDrop#2026";
 let s = 42;
 const rnd = () => { s |= 0; s = (s + 0x6d2b79f5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };

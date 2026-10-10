@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { z } from "zod";
 import { createTenantClient, prisma } from "@/lib/platform/db";
 import { AppError, toFailure, type ActionResult } from "@/lib/platform/errors";
-import { clientIp, enforceRateLimit } from "@/lib/platform/rate-limit";
+import { clientIp, enforceSharedRateLimit } from "@/lib/platform/rate-limit";
 import { getEntitlements, assertFeature } from "@/lib/platform/entitlements";
 import { createShipment, quoteForInput } from "@/lib/logistics/shipments";
 import { shipmentInputSchema } from "@/lib/logistics/schemas";
@@ -20,7 +20,7 @@ async function publicSvc(slug: string): Promise<ServiceCtx> {
 
 export async function publicQuoteAction(raw: { slug: string } & Record<string, unknown>): Promise<ActionResult<any>> {
   try {
-    enforceRateLimit(`pubquote:${clientIp(await headers())}`, 40, 60 * 60_000);
+    await enforceSharedRateLimit(`pubquote:${clientIp(await headers())}`, 40, 60 * 60_000);
     const { slug, ...rest } = raw;
     const svc = await publicSvc(String(slug));
     const i = bookingSchema.pick({ pickupCity: true, pickupState: true, deliveryCity: true, deliveryState: true, weightKg: true, priority: true, packageType: true, declaredValue: true }).parse(rest);
@@ -30,7 +30,7 @@ export async function publicQuoteAction(raw: { slug: string } & Record<string, u
 
 export async function publicBookAction(raw: { slug: string } & Record<string, unknown>): Promise<ActionResult<{ trackingNumber: string }>> {
   try {
-    enforceRateLimit(`pubbook:${clientIp(await headers())}`, 8, 60 * 60_000);
+    await enforceSharedRateLimit(`pubbook:${clientIp(await headers())}`, 8, 60 * 60_000);
     const { slug, ...rest } = raw;
     const input = bookingSchema.parse(rest);
     if (input.website) throw new AppError("VALIDATION", "Could not submit"); // bots fill the hidden field

@@ -684,6 +684,15 @@ model Hub {
   @@index([companyId, branchId])
 }
 
+/// Cross-instance rate-limit counters for security-sensitive endpoints (login, sign-up, password reset, public forms).
+model RateLimitBucket {
+  key      String   @id
+  count    Int
+  resetAt  DateTime
+
+  @@index([resetAt])
+}
+
 /// A city / area added by the company to the built-in state → city lists.
 model CityOption {
   id        String   @id @default(cuid())

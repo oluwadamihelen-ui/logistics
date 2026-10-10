@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { brand } from "@/config/brand";
+import { ProductOf } from "@/components/marketing/site-footer";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -21,10 +22,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <path d="M10 200 C 90 190, 110 100, 190 110 S 300 40, 390 20" stroke="rgb(var(--accent))" strokeWidth="3" strokeDasharray="6 8" strokeLinecap="round" />
           <circle cx="10" cy="200" r="7" fill="white" /><circle cx="190" cy="110" r="6" fill="white" /><circle cx="390" cy="20" r="8" fill="rgb(var(--accent))" />
         </svg>
-        <p className="relative z-10 text-xs text-slate-400">© {new Date().getFullYear()} {brand.APP_NAME}</p>
+        <p className="relative z-10 text-xs text-slate-400">© {new Date().getFullYear()} {brand.COMPANY_NAME}. <ProductOf className="text-slate-300" /></p>
       </aside>
       <main className="flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-md">{children}</div>
+        <div className="w-full max-w-md">{children}<p className="mt-8 text-center text-xs text-slate-400"><ProductOf /> · <a href="/terms" className="hover:underline">Terms</a> · <a href="/privacy" className="hover:underline">Privacy</a></p></div>
       </main>
     </div>
   );

@@ -3,6 +3,7 @@
  * any scheduler (Vercel Cron, GitHub Actions, Windows Task Scheduler + curl, cron-job.org…).
  */
 import { prisma, createTenantClient } from "./db";
+import { purgeRateLimits } from "./rate-limit";
 import { renewDueSubscriptions } from "./billing";
 import { resolveAccess } from "./entitlements";
 import { emitSafe } from "./notifications/engine";
@@ -14,6 +15,7 @@ export async function runMaintenance(now = new Date()) {
   const summary = { companies: 0, expiryAlerts: 0, overdueAlerts: 0, offlineAlerts: 0, subscriptionsUpdated: 0, trialNotices: 0, renewalsAttempted: 0, renewalsSucceeded: 0, renewalsFailed: 0 };
   // Auto-renewals run first so a successful charge prevents the lapse transition below.
   try { const r = await renewDueSubscriptions(now); summary.renewalsAttempted = r.attempted; summary.renewalsSucceeded = r.renewed; summary.renewalsFailed = r.failed; } catch (e) { console.error("[maintenance] renewals failed", e instanceof Error ? e.message : e); }
+  await purgeRateLimits().catch(() => undefined);
   const companies = await prisma.company.findMany({ where: { status: { in: ["ACTIVE", "ONBOARDING"] } }, select: { id: true } });
   for (const { id } of companies) {
     summary.companies++;

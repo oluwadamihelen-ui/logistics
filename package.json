@@ -15,7 +15,9 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "vercel-build": "node scripts/vercel-build.mjs",
+    "admin:create": "tsx scripts/create-admin.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -56,5 +58,8 @@
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vitest": "^3.2.7"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
