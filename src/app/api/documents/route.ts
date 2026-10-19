@@ -6,6 +6,7 @@ import { assertOwned } from "@/lib/platform/db";
 import { auditFrom } from "@/lib/platform/audit";
 import { guardMutation } from "@/lib/platform/entitlements";
 import { enforceRateLimit } from "@/lib/platform/rate-limit";
+import { assertNotDemo } from "@/lib/platform/demo";
 import { getStorage, MAX_UPLOAD, safeFileName, sniffMime } from "@/lib/platform/storage";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ const meta = z.object({
 
 export async function POST(req: Request) {
   try {
+    assertNotDemo("Uploading documents");
     const ctx = await requireTenant("documents.manage");
     enforceRateLimit(`upload:${ctx.user.id}`, 30, 60_000);
     await guardMutation(ctx.companyId);

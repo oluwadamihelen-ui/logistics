@@ -124,6 +124,10 @@ See [`.env.example`](.env.example) — every variable with a safe placeholder. R
 
 `npm test` creates/migrates an isolated `logistics_test` database (override with `TEST_DATABASE_URL`). 119 tests cover: RBAC matrix, shipment state machine, pricing, entitlements, tenant isolation (data layer, FK injection, services, audit immutability at DB level), shipment lifecycle/proof/failed-delivery/COD/idempotency, finance & settlements, billing + signed/idempotent webhooks, AI permission/tenant/confirmation enforcement, public API auth/scopes/idempotency, portal isolation, public booking.
 
+## Public demo
+
+See [DEMO.md](DEMO.md): run a separate demo deployment (`DEMO_MODE=1`) with one-click role logins, sample data that resets daily, and risky features switched off, for marketplace listings.
+
 ## Going live
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for the Vercel + Neon launch checklist (environment variables, migrations, cron, first admin, smoke tests).

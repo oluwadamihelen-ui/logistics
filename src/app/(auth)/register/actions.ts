@@ -6,6 +6,7 @@ import { toFailure, type ActionResult } from "@/lib/platform/errors";
 import { enforceSharedRateLimit, clientIp } from "@/lib/platform/rate-limit";
 import { prisma } from "@/lib/platform/db";
 import { AppError } from "@/lib/platform/errors";
+import { assertNotDemo } from "@/lib/platform/demo";
 
 const schema = z.object({
   companyName: z.string().trim().min(2).max(100),
@@ -20,6 +21,7 @@ const schema = z.object({
 export async function registerCompany(raw: unknown): Promise<ActionResult<{ email: string }>> {
   try {
     await enforceSharedRateLimit(`register:${clientIp(await headers())}`, 5, 60 * 60_000);
+    assertNotDemo("Sign-up");
     const flag = await prisma.platformSetting.findUnique({ where: { key: "signupsEnabled" } });
     if (flag?.value === false) throw new AppError("FORBIDDEN", "New registrations are currently closed.");
     const { confirmPassword, ...input } = schema.parse(raw);

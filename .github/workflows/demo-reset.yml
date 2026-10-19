@@ -1,0 +1,22 @@
+# Resets the public demo database every day. Runs only when the repository variable DEMO_RESET_ENABLED is "true".
+# Add the secret DEMO_DATABASE_URL (connection string of your DEMO database ONLY) and the variable DEMO_RESET_ENABLED=true.
+name: Reset demo data
+on:
+  schedule: [{ cron: "30 2 * * *" }]
+  workflow_dispatch: {}
+jobs:
+  reset:
+    if: ${{ vars.DEMO_RESET_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - run: npx prisma migrate deploy
+        env: { DATABASE_URL: "${{ secrets.DEMO_DATABASE_URL }}" }
+      - run: npm run demo:reset
+        env:
+          DATABASE_URL: ${{ secrets.DEMO_DATABASE_URL }}
+          DEMO_MODE: "1"
+          CONFIRM_DEMO_RESET: "yes"

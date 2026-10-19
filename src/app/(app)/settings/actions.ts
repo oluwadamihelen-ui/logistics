@@ -1,4 +1,5 @@
 "use server";
+import { assertNotDemo } from "@/lib/platform/demo";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { defineAction } from "@/lib/platform/action";
@@ -88,20 +89,23 @@ export const upsertTemplateAction = defineAction({
 
 const roleEnum = z.enum([...ASSIGNABLE_ROLES, "COMPANY_OWNER"] as unknown as [string, ...string[]]);
 export const createUserAction = defineAction({
+  blockInDemo: "Adding users",
   permissions: ["users.manage"],
   schema: z.object({ name: z.string().trim().min(2).max(100), email: z.string().email(), phone: opt(phone), role: roleEnum, branchId: opt(z.string()), password: z.string().min(10).max(200) }),
   handler: async (ctx, i) => { const u = await createStaffUser(ctx, ctx.user.role, i as any); return { id: u.id }; },
 });
 export const updateUserAction = defineAction({
+  blockInDemo: "Editing users",
   permissions: ["users.manage"],
   schema: z.object({ id: z.string(), role: opt(roleEnum), branchId: z.string().nullable().optional(), isActive: z.boolean().optional(), extraPermissions: z.array(z.string()).optional(), deniedPermissions: z.array(z.string()).optional(), name: opt(z.string().min(2).max(100)), phone: opt(phone) }),
   handler: async (ctx, { id, ...i }) => { await updateStaffUser(ctx, ctx.user.id, ctx.user.role, id, i as any); return true; },
 });
-export const resetPasswordAction = defineAction({ permissions: ["users.manage"], schema: z.object({ id: z.string(), password: z.string().min(10).max(200) }), handler: async (ctx, i) => { await resetUserPassword(ctx, ctx.user.role, i.id, i.password); return true; } });
+export const resetPasswordAction = defineAction({ blockInDemo: "Resetting passwords", permissions: ["users.manage"], schema: z.object({ id: z.string(), password: z.string().min(10).max(200) }), handler: async (ctx, i) => { await resetUserPassword(ctx, ctx.user.role, i.id, i.password); return true; } });
 
 /** Change own password. Revokes other sessions. */
 export async function changeOwnPasswordAction(raw: { current: string; next: string }): Promise<ActionResult<boolean>> {
   try {
+    assertNotDemo("Changing the password");
     const ctx = await requireTenant();
     const i = z.object({ current: z.string().min(1), next: z.string().min(10).max(200) }).parse(raw);
     const bcrypt = (await import("bcryptjs")).default;

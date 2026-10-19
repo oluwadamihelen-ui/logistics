@@ -5,6 +5,7 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { brand } from "@/config/brand";
+import { DemoPanel } from "./demo-panel";
 
 const MESSAGES: Record<string, string> = {
   RATE_LIMITED: "Too many attempts. Please wait a few minutes and try again.",
@@ -37,6 +38,7 @@ function LoginForm() {
 
   return (
     <>
+      <DemoPanel />
       <h1 className="text-2xl font-semibold">Welcome back</h1>
       <p className="mt-1 text-sm text-slate-500">Sign in to your {brand.APP_NAME} workspace.</p>
       <form onSubmit={onSubmit} className="mt-8 space-y-4">

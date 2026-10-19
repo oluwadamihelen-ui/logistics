@@ -1,12 +1,14 @@
 "use server";
 import { headers } from "next/headers";
 import { z } from "zod";
+import { assertNotDemo } from "@/lib/platform/demo";
 import { toFailure, type ActionResult } from "@/lib/platform/errors";
 import { clientIp, enforceSharedRateLimit } from "@/lib/platform/rate-limit";
 import { requestPasswordReset } from "@/lib/platform/password-reset";
 
 export async function forgotPasswordAction(raw: { email: string }): Promise<ActionResult<boolean>> {
   try {
+    assertNotDemo("Password reset");
     const ip = clientIp(await headers());
     await enforceSharedRateLimit(`forgot:ip:${ip}`, 8, 60 * 60_000);
     const { email } = z.object({ email: z.string().email().max(254) }).parse(raw);

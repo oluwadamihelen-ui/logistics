@@ -2,6 +2,7 @@ import Link from "next/link";
 import { currentUserOrNull } from "@/lib/platform/context";
 import { prisma } from "@/lib/platform/db";
 import { ensurePlans } from "@/lib/platform/provisioning";
+import { isDemo } from "@/lib/platform/demo";
 import { homeFor } from "@/lib/platform/home";
 import { brand } from "@/config/brand";
 import { SiteHeader } from "@/components/marketing/site-header";
@@ -64,7 +65,10 @@ export default async function Landing() {
     rows = await ensurePlans().then(loadPlans).catch(() => []);
   }
   const plans: PricingPlan[] = rows.map((p) => ({ key: p.key, name: p.name, description: p.description, monthly: p.monthlyPriceKobo, annual: p.annualPriceKobo, currency: p.currency, limits: p.limits as Record<string, number | null>, features: p.features, popular: p.key === "professional" }));
-  const cta = dashHref
+  const demo = isDemo();
+  const cta = demo && !dashHref
+    ? <><Link href="/login" className="btn-primary !bg-accent !px-6 !py-3 text-base">Try the live demo</Link><a href="#how" className="btn-secondary !px-6 !py-3 text-base">See how it works</a></>
+    : dashHref
     ? <Link href={dashHref} className="btn-primary !bg-accent !px-6 !py-3 text-base">Open dashboard</Link>
     : <><Link href="/register" className="btn-primary !bg-accent !px-6 !py-3 text-base">Start free trial</Link><a href="#how" className="btn-secondary !px-6 !py-3 text-base">See how it works</a></>;
 
@@ -74,7 +78,7 @@ export default async function Landing() {
         "@context": "https://schema.org", "@type": "SoftwareApplication", name: brand.APP_NAME, applicationCategory: "BusinessApplication", operatingSystem: "Web",
         description: brand.APP_TAGLINE, publisher: { "@type": "Organization", name: brand.COMPANY_NAME, ...(brand.COMPANY_URL ? { url: brand.COMPANY_URL } : {}) },
       }).replace(/</g, "\\u003c") }} />
-      <SiteHeader name={brand.APP_NAME} logo={brand.APP_WORDMARK} dashHref={dashHref} />
+      <SiteHeader name={brand.APP_NAME} logo={brand.APP_WORDMARK} dashHref={dashHref} demo={isDemo()} />
 
       {/* Hero */}
       <section className="relative overflow-hidden bg-ink text-white">

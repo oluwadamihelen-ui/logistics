@@ -23,6 +23,7 @@ export const createApiKeyAction = defineAction({
 export const revokeApiKeyAction = defineAction({ permissions: ["api.manage"], schema: z.object({ id: z.string() }), handler: async (ctx, i) => { const k = await ctx.db.apiKey.findFirst({ where: { id: i.id } }); if (!k) throw new AppError("NOT_FOUND", "Key not found"); await ctx.db.apiKey.update({ where: { id: i.id }, data: { revokedAt: new Date() } }); await auditFrom(ctx, "apikey.revoked", "ApiKey", i.id, { name: k.name }); return true; } });
 
 export const createWebhookAction = defineAction({
+  blockInDemo: "Webhooks",
   permissions: ["api.manage"], schema: z.object({ url: z.string().url().max(300), events: z.array(z.enum(["shipment.status_changed"])).min(1) }),
   handler: async (ctx, i) => {
     assertFeature(await getEntitlements(ctx.companyId), "api_access");

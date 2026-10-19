@@ -15,6 +15,7 @@ export function checkEnv(env: Record<string, string | undefined> = process.env, 
   const url = env.NEXTAUTH_URL ?? "";
   if (!url) (env.VERCEL ? warnings : errors).push("NEXTAUTH_URL is not set (set it to your public https:// address; links in emails and payment callbacks use it).");
   else if (production && !/^https:\/\//.test(url)) errors.push("NEXTAUTH_URL must be an https:// address in production.");
+  if (env.DEMO_MODE === "1") warnings.push("DEMO_MODE=1: public demo accounts and a well-known password are active. Use this ONLY on a separate demo deployment with its own database, never with real customer data.");
   if (production) {
     if (!env.CRON_SECRET) warnings.push("CRON_SECRET is not set: scheduled maintenance (trial/renewal/expiry jobs) is disabled.");
     else if (env.CRON_SECRET.length < 24) warnings.push("CRON_SECRET is short; use 24+ random characters.");

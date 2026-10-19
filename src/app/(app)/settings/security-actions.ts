@@ -8,10 +8,11 @@ import { AppError, toFailure, type ActionResult } from "@/lib/platform/errors";
 import { auditFrom } from "@/lib/platform/audit";
 import { enforceSharedRateLimit } from "@/lib/platform/rate-limit";
 import { consumeRecoveryCode, decryptSecret, encryptSecret, generateRecoveryCodes, generateSecret, otpauthUrl, verifyTotp } from "@/lib/platform/two-factor";
+import { assertNotDemo } from "@/lib/platform/demo";
 import { brand } from "@/config/brand";
 
 async function run<T>(fn: (ctx: Awaited<ReturnType<typeof requireTenant>>) => Promise<T>): Promise<ActionResult<T>> {
-  try { return { ok: true, data: await fn(await requireTenant()) }; } catch (e) { return toFailure(e); }
+  try { assertNotDemo("Two-factor authentication"); return { ok: true, data: await fn(await requireTenant()) }; } catch (e) { return toFailure(e); }
 }
 
 export async function beginTwoFactorAction() {

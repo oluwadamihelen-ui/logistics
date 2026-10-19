@@ -8,7 +8,7 @@ import { computeQuote } from "../src/lib/logistics/pricing";
 import { loadPricingRules, createShipment, transitionShipment, assignShipments } from "../src/lib/logistics/shipments";
 import { emit } from "../src/lib/platform/notifications/engine";
 
-if (process.env.NODE_ENV === "production" && process.env.ALLOW_PRODUCTION_SEED !== "1") {
+if (process.env.NODE_ENV === "production" && process.env.ALLOW_PRODUCTION_SEED !== "1" && process.env.DEMO_MODE !== "1") {
   console.error("Refusing to seed demo data in production (it creates accounts with a known password). Use `npm run admin:create` instead.");
   process.exit(1);
 }
@@ -51,8 +51,8 @@ async function main() {
     db.branch.create({ data: { name: "Abuja Branch", code: "ABJ", city: "Abuja", state: "FCT", lat: 9.0765, lng: 7.3986 } as any }),
   ]);
   const hubs = await Promise.all([
-    db.hub.create({ data: { name: "Ikeja Sorting Hub", code: "IKJ-H", type: "SORTING_CENTER", branchId: ikeja.id, city: "Ikeja", state: "Lagos", lat: 6.605, lng: 3.34 } as any }),
-    db.hub.create({ data: { name: "Lekki Hub", code: "LEK-H", type: "HUB", branchId: lekki.id, city: "Lekki", state: "Lagos", lat: 6.44, lng: 3.5 } as any }),
+    db.hub.create({ data: { name: "Ikeja Sorting Hub", code: "IKJ-H", type: "SORTING_CENTER", branchId: ikeja.id, city: "Ikeja", state: "Lagos", lat: 6.605, lng: 3.34, addressLine: "7 Obafemi Awolowo Way", openingHours: "Mon–Sat 8am–6pm", allowsCollection: true } as any }),
+    db.hub.create({ data: { name: "Lekki Hub", code: "LEK-H", type: "HUB", branchId: lekki.id, city: "Lekki", state: "Lagos", lat: 6.44, lng: 3.5, addressLine: "12 Admiralty Way", openingHours: "Mon–Sat 9am–7pm", allowsCollection: true } as any }),
     db.hub.create({ data: { name: "Abuja Warehouse", code: "ABJ-W", type: "WAREHOUSE", branchId: abuja.id, city: "Abuja", state: "FCT", lat: 9.06, lng: 7.49 } as any }),
   ]);
   const zones = await Promise.all([

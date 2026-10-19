@@ -4,11 +4,12 @@ import type { Prisma } from "@prisma/client";
 import { requirePlatformAdmin } from "@/lib/platform/context";
 import { prisma } from "@/lib/platform/db";
 import { audit } from "@/lib/platform/audit";
+import { assertNotDemo } from "@/lib/platform/demo";
 import { AppError, toFailure, type ActionResult } from "@/lib/platform/errors";
 import { FEATURES, LIMIT_KEYS } from "@/lib/platform/entitlements";
 
 async function admin<T>(fn: (a: { id: string; name: string; role: string }) => Promise<T>): Promise<ActionResult<T>> {
-  try { const u = await requirePlatformAdmin(); return { ok: true, data: await fn({ id: u.id, name: u.name, role: u.role }) }; } catch (e) { return toFailure(e); }
+  try { assertNotDemo("Platform changes"); const u = await requirePlatformAdmin(); return { ok: true, data: await fn({ id: u.id, name: u.name, role: u.role }) }; } catch (e) { return toFailure(e); }
 }
 
 export async function setCompanyStatusAction(raw: { id: string; status: "ACTIVE" | "SUSPENDED" | "CLOSED" }) {

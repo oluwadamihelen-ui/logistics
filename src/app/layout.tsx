@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { brand } from "@/config/brand";
 import { Providers } from "@/components/client/providers";
+import { DemoBanner } from "@/components/demo-banner";
+import { isDemo } from "@/lib/platform/demo";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "http://localhost:3000"),
@@ -15,13 +17,14 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: brand.APP_NAME, description: brand.APP_TAGLINE, images: ["/logo-full.png"] },
   icons: { icon: [{ url: "/favicon.ico", sizes: "any" }, { url: "/icon.png", type: "image/png", sizes: "512x512" }], apple: "/apple-icon.png" },
   manifest: "/manifest.webmanifest",
+  ...(isDemo() ? { robots: { index: false, follow: false } } : {}),
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0f62fe" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" style={{ ["--brand" as any]: brand.PRIMARY_COLOR, ["--brand-dark" as any]: brand.PRIMARY_COLOR_DARK, ["--accent" as any]: brand.SECONDARY_COLOR }}>
-      <body><Providers>{children}</Providers></body>
+      <body><Providers>{children}</Providers><DemoBanner /></body>
     </html>
   );
 }
