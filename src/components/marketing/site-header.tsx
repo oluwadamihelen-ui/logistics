@@ -3,7 +3,7 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 
-const LINKS: [string, string][] = [["Features", "/#features"], ["How it works", "/#how"], ["Solutions", "/#solutions"], ["Pricing", "/#pricing"], ["FAQ", "/#faq"], ["Track", "/track"]];
+const LINKS: [string, string][] = [["Features", "/#features"], ["How it works", "/#how"], ["Solutions", "/#solutions"], ["Pricing", "/#pricing"], ["Docs", "/docs"], ["FAQ", "/#faq"], ["Track", "/track"]];
 
 export function SiteHeader({ name, logo, dashHref, demo = false }: { name: string; logo: string; dashHref: string | null; demo?: boolean }) {
   const [open, setOpen] = React.useState(false);

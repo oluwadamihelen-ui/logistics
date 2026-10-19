@@ -3,7 +3,7 @@ import Image from "next/image";
 import { brand } from "@/config/brand";
 
 const COLS: [string, [string, string][]][] = [
-  ["Product", [["Features", "/#features"], ["How it works", "/#how"], ["Pricing", "/#pricing"], ["FAQ", "/#faq"]]],
+  ["Product", [["Features", "/#features"], ["How it works", "/#how"], ["Pricing", "/#pricing"], ["Documentation", "/docs"], ["FAQ", "/#faq"]]],
   ["Solutions", [["Courier & last-mile", "/#solutions"], ["Freight & haulage", "/#solutions"], ["Food & retail delivery", "/#solutions"], ["Multi-branch operators", "/#solutions"]]],
   ["Customers", [["Track a shipment", "/track"], ["Sign in", "/login"], ["Create an account", "/register"], ["Forgot password", "/forgot-password"]]],
   ["Company", [[`About ${brand.COMPANY_NAME}`, "/about"], ["Terms of Service", "/terms"], ["Privacy Policy", "/privacy"], ["Contact", `mailto:${brand.SUPPORT_EMAIL}`]]],

@@ -1,6 +1,6 @@
 {
   "name": "logistics-os",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -31,6 +31,7 @@
     "exceljs": "^4.4.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.52.0",
+    "marked": "^14.1.4",
     "next": "^15.5.27",
     "next-auth": "^4.24.15",
     "pdfkit": "^0.20.2",

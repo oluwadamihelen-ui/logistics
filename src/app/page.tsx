@@ -12,7 +12,7 @@ import { PricingSection, type PricingPlan } from "@/components/marketing/pricing
 export const dynamic = "force-dynamic";
 export const metadata = { title: `${brand.APP_NAME} — ${brand.APP_TAGLINE}`, description: "Shipments, dispatch, drivers, fleet, COD and finance in one workspace for delivery and logistics companies." };
 
-const STATS: [string, string][] = [["16", "shipment statuses tracked end to end"], ["14", "staff roles with per-user permissions"], ["3", "proof-of-delivery methods: photo, signature, OTP"], ["100%", "tenant-isolated company data"]];
+const STATS: [string, string][] = [["17", "shipment statuses tracked end to end"], ["14", "staff roles with per-user permissions"], ["3", "proof-of-delivery methods: photo, signature, OTP"], ["100%", "tenant-isolated company data"]];
 
 const FEATURES: [string, string, string][] = [
   ["📦", "Shipments & tracking", "Book, label and track every parcel through a strict status flow, with a public tracking page and delivery notifications."],

@@ -37,3 +37,24 @@ body { @apply bg-surface text-ink antialiased; font-family: Inter, ui-sans-serif
 /* Hide scrollbars everywhere (scrolling still works by wheel, touch, keyboard and trackpad). */
 * { scrollbar-width: none; -ms-overflow-style: none; }
 *::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+/* Documentation pages (content/docs/*.md rendered to HTML) */
+.prose-docs { @apply text-[15px] leading-7 text-slate-700; }
+.prose-docs h1 { @apply text-3xl font-bold tracking-tight text-ink sm:text-4xl; }
+.prose-docs h2 { @apply mt-12 scroll-mt-24 border-b border-line pb-2 text-2xl font-semibold tracking-tight text-ink; }
+.prose-docs h3 { @apply mt-8 scroll-mt-24 text-lg font-semibold text-ink; }
+.prose-docs p, .prose-docs ul, .prose-docs ol, .prose-docs pre, .prose-docs .table-wrap, .prose-docs blockquote { @apply mt-4; }
+.prose-docs ul { @apply list-disc pl-6; }
+.prose-docs ol { @apply list-decimal pl-6; }
+.prose-docs li { @apply mt-1.5; }
+.prose-docs li > ul, .prose-docs li > ol { @apply mt-1.5; }
+.prose-docs a { @apply text-brand underline underline-offset-2; }
+.prose-docs strong { @apply font-semibold text-ink; }
+.prose-docs code { @apply rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[13px] text-slate-800; }
+.prose-docs pre { @apply overflow-x-auto rounded-xl bg-ink p-4 text-[13px] leading-6 text-slate-100; }
+.prose-docs pre code { @apply bg-transparent p-0 text-inherit; }
+.prose-docs blockquote { @apply rounded-r-lg border-l-4 border-brand bg-brand-soft/50 px-4 py-2 text-slate-700; }
+.prose-docs .table-wrap { @apply overflow-x-auto rounded-xl border border-line; }
+.prose-docs table { @apply w-full min-w-[520px] border-collapse text-sm; }
+.prose-docs th { @apply bg-slate-50 px-3 py-2 text-left font-semibold text-ink; }
+.prose-docs td { @apply border-t border-line px-3 py-2 align-top; }
